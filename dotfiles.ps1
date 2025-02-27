@@ -1,6 +1,7 @@
 cd $HOME
 
 dot add README.md dotfiles.ps1 
+dot add .config/wezterm
 dot add .vimrc
 
 # push
