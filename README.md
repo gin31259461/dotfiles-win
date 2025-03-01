@@ -34,15 +34,18 @@
 
 ## Setting up a new machine
 
+1. install [pwsh-setup](https://github.com/gin31259461/pwsh-setup) for setup powershell
+
+2. after open new terminal, run following command
+
 ```pwsh
 git clone --separate-git-dir=$HOME/.dotfiles \
   git@github.com:gin31259461/dotfiles-win.git tmpdotfiles
 
-rsync --recursive --verbose --exclude '.git' tmpdotfiles/ $HOME/
+robocopy tmpdotfiles $HOME /E /V /XD .git
 
-rm -rf tmpdotfiles
+Remove-Item -Path "tmpdotfiles" -Recurse -Force
 
-# after restart terminal
 dot config --local status.showUntrackedFiles no
 ```
 
