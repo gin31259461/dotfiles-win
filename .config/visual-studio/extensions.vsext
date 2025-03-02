@@ -1,5 +1,5 @@
 {
-  "id": "444405f7-7724-4754-aa81-2c0273f43128",
+  "id": "577aa9eb-2889-4251-b933-c56f3aa6556d",
   "version": "1.0",
   "name": "My Visual Studio extensions",
   "description": "A collection of my Visual Studio extensions",
@@ -27,6 +27,12 @@
       "name": "Visual Studio Iconizer for Visual Studio 2022",
       "moreInfoUrl": "https://marketplace.visualstudio.com/items?itemName=OlegTarasov.Iconizer2022",
       "downloadUrl": "https://olegtarasov.gallery.vsassets.io:443/_apis/public/gallery/publisher/OlegTarasov/extension/Iconizer2022/1.26/assetbyname/Microsoft.VisualStudio.Ide.Payload?redirect=true\u0026update=true"
+    },
+    {
+      "vsixId": "PiecesVisualStudio.92e28916-9bc0-41fd-a7a0-4a0e8af87a56",
+      "name": "Pieces for Visual Studio",
+      "moreInfoUrl": "https://marketplace.visualstudio.com/items?itemName=MeshIntelligentTechnologiesInc.PiecesVisualStudio",
+      "downloadUrl": "https://meshintelligenttechnologiesinc.gallery.vsassets.io:443/_apis/public/gallery/publisher/MeshIntelligentTechnologiesInc/extension/PiecesVisualStudio/4.1.2.0/assetbyname/Microsoft.VisualStudio.Ide.Payload?redirect=true\u0026update=true"
     },
     {
       "vsixId": "VSOutputEnhancer.Nikolay Balakin.a06be4c3-f97e-425c-8a0d-bdef08ac2abb",
