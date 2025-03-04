@@ -24,7 +24,7 @@ config.launch_menu = launch_menu
 -- end
 
 config.initial_cols = 150
-config.initial_rows = 50
+config.initial_rows = 40
 config.color_scheme = "Tokyo Night"
 config.font = wezterm.font("FiraCode Nerd Font")
 
