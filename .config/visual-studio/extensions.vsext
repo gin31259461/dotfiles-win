@@ -1,15 +1,9 @@
 {
-  "id": "1bf27a71-3ad4-470c-8301-f15d0fc5da9e",
+  "id": "cd39a95e-3b80-4ba6-a52a-2044ffd00b9f",
   "version": "1.0",
   "name": "My Visual Studio extensions",
   "description": "A collection of my Visual Studio extensions",
   "extensions": [
-    {
-      "vsixId": "Microsoft.VisualStudio.LiveShare.2022",
-      "name": "Live Share 2022",
-      "moreInfoUrl": "https://marketplace.visualstudio.com/items?itemName=MS-vsliveshare.vsls-vs-2022",
-      "downloadUrl": "https://ms-vsliveshare.gallery.vsassets.io:443/_apis/public/gallery/publisher/MS-vsliveshare/extension/vsls-vs-2022/1.0.5949.0/assetbyname/Microsoft.VisualStudio.Ide.Payload?redirect=true\u0026update=true"
-    },
     {
       "vsixId": "VsVim.Microsoft.e97cd707-324b-4e35-a669-eef8dae4b8cf",
       "name": "VsVim 2022",
@@ -21,6 +15,12 @@
       "name": "Tabnine - AI Chat and Autocomplete for JS and more",
       "moreInfoUrl": "https://marketplace.visualstudio.com/items?itemName=TabNine.tabnine-visual-studio",
       "downloadUrl": "https://tabnine.gallery.vsassets.io:443/_apis/public/gallery/publisher/TabNine/extension/tabnine-visual-studio/1.195.1/assetbyname/Microsoft.VisualStudio.Ide.Payload?redirect=true\u0026update=true"
+    },
+    {
+      "vsixId": "METAOUTPUT.2022.2DEDB4CB-B638-4121-874B-191C988DFC69",
+      "name": "MetaOutput 2022",
+      "moreInfoUrl": "https://marketplace.visualstudio.com/items?itemName=ViacheslavLozinskyi.MetaOutput-2022",
+      "downloadUrl": "https://viacheslavlozinskyi.gallery.vsassets.io:443/_apis/public/gallery/publisher/ViacheslavLozinskyi/extension/MetaOutput-2022/2.1.1.195/assetbyname/Microsoft.VisualStudio.Ide.Payload?redirect=true\u0026update=true"
     },
     {
       "vsixId": "3a7b4930-a5fb-46ec-a9b8-9610c8f953b8",
