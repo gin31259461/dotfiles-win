@@ -1,0 +1,5 @@
+[general]
+import = ["./themes/themes/vscode.toml"]
+[font]
+normal = { family = "FiraCode Nerd Font", style = "Regular" }
+size = 12
