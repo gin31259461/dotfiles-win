@@ -6,32 +6,47 @@ M.general = {
   -- i = {},
   n = {
     ----- VSCode -----
-    ["<leader>fm"] = { function()
-      vscode.call("editor.action.formatDocument")
-    end },
-    ["<leader>/"] = { function()
-      vscode.call("editor.action.commentLine")
-    end },
-    ["<leader>x"] = { function()
-      vscode.call("workbench.action.closeActiveEditor")
-    end },
-    ["<leader>X"] = { function()
-      vscode.call("workbench.action.closeAllEditors")
-    end },
-    ["<leader>ff"] = { function()
-      vscode.call("editor.toggleFold")
-    end },
-    ["<leader>r"] = { function()
-      vscode.call("editor.action.rename")
-    end },
-    ["<leader>h"] = { function()
-      local inlay_hints_cfg = "editor.inlayHints.enabled"
-      if vscode.get_config(inlay_hints_cfg) == "offUnlessPressed" then
-        vscode.update_config(inlay_hints_cfg, "on", "global")
-      else
-        vscode.update_config(inlay_hints_cfg, "offUnlessPressed", "global")
-      end
-    end, "Toggle inlay hints" },
+    ["<leader>fm"] = {
+      function()
+        vscode.call("editor.action.formatDocument")
+      end,
+    },
+    ["<leader>/"] = {
+      function()
+        vscode.call("editor.action.commentLine")
+      end,
+    },
+    ["<leader>x"] = {
+      function()
+        vscode.call("workbench.action.closeActiveEditor")
+      end,
+    },
+    ["<leader>X"] = {
+      function()
+        vscode.call("workbench.action.closeAllEditors")
+      end,
+    },
+    ["<leader>ff"] = {
+      function()
+        vscode.call("editor.toggleFold")
+      end,
+    },
+    ["<leader>r"] = {
+      function()
+        vscode.call("editor.action.rename")
+      end,
+    },
+    ["<leader>h"] = {
+      function()
+        local inlay_hints_cfg = "editor.inlayHints.enabled"
+        if vscode.get_config(inlay_hints_cfg) == "offUnlessPressed" then
+          vscode.update_config(inlay_hints_cfg, "on", "global")
+        else
+          vscode.update_config(inlay_hints_cfg, "offUnlessPressed", "global")
+        end
+      end,
+      "Toggle inlay hints",
+    },
 
     ----- VIM -----
     [";"] = { ":", "enter command mode", opts = { nowait = true } },
@@ -54,12 +69,16 @@ M.general = {
   },
   x = {
     ----- VSCode -----
-    ["<leader>/"] = { function()
-      vscode.call("editor.action.commentLine")
-    end },
-    ["<leader>fm"] = { function()
-      vscode.call("editor.action.formatSelection")
-    end },
+    ["<leader>/"] = {
+      function()
+        vscode.call("editor.action.commentLine")
+      end,
+    },
+    ["<leader>fm"] = {
+      function()
+        vscode.call("editor.action.formatSelection")
+      end,
+    },
 
     ----- VIM -----
     ["<"] = { "<gv", "indent backword and stay in visual mode" },
@@ -75,7 +94,7 @@ M.general = {
     ["<leader>P"] = { '"+P', "Paste from system clipboard before cursor in visual mode" },
     ["<leader>d"] = { '"+d', "Delete to system clipboard in visual mode" },
     ["p"] = { '"_dP', "Dont copy replaced text", opts = { silent = true } },
-  }
+  },
 }
 
 return M

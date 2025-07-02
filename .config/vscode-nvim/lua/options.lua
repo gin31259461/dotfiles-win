@@ -6,7 +6,7 @@ o.clipboard = "unnamed"
 
 -- go to previous/next line with h,l,left arrow and right arrow
 -- when cursor reaches end/beginning of line
-o.whichwrap:append "<>[]hl"
+o.whichwrap:append("<>[]hl")
 o.timeoutlen = 400
 o.undofile = true
 
