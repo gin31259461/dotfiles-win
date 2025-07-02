@@ -3,6 +3,7 @@ cd $HOME
 dot add README.md dotfiles.ps1 
 dot add .config/wezterm
 dot add .config/visual-studio
+dot add .config/vscode-nvim
 dot add .vimrc
 
 # push
