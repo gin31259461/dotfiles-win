@@ -48,7 +48,6 @@ M.general = {
     ["<leader>d"] = { '"+d', "Delete to system clipboard" },
 
     -- line numbers
-    ["<leader>n"] = { "<cmd> set nu! <CR>", "Toggle line number" },
     ["<M-j>"] = { ":m .+1<CR>==", "move line down", opts = { silent = true } },
     ["<M-k>"] = { ":m .-2<CR>==", "move line up", opts = { silent = true } },
     ["<Esc>"] = { "<cmd> noh <CR>", "Clear highlights" },

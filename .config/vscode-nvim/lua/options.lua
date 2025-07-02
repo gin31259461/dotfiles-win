@@ -2,7 +2,6 @@ local o = vim.opt
 local g = vim.g
 
 o.number = true
-o.relativenumber = true
 o.clipboard = "unnamed"
 
 -- go to previous/next line with h,l,left arrow and right arrow
