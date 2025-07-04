@@ -1,4 +1,11 @@
 [submodule "alacritty-theme"]
   path = AppData/Roaming/alacritty/themes
   url = https://github.com/alacritty/alacritty-theme.git 
+<<<<<<< HEAD
   branch = master
+=======
+
+[submodule "nvchad-config"]
+  path = .config/nvim
+  url = git@github.com:gin31259461/nvchad.git
+>>>>>>> f445d9690b399f6da4ec3bba0c3f4d0d02f9b4ad
