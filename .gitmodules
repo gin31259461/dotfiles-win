@@ -1,3 +1,4 @@
 [submodule "alacritty-theme"]
   path = AppData/Roaming/alacritty/themes
   url = https://github.com/alacritty/alacritty-theme.git 
+  branch = master
