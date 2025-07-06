@@ -1,9 +1,13 @@
 [general]
-import = ["./themes/themes/vscode.toml"]
+import = ["./themes/themes/github_dark.toml"]
 
 [font]
 normal = { family = "FiraCode Nerd Font", style = "Regular" }
 size = 12
+
+[window]
+position = { x = 0, y = 0 }
+dimensions = { columns = 120, lines = 40 }
 
 [terminal]
 shell = { program = "powershell.exe", args = ["-NoLogo"] }
