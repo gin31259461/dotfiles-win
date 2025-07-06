@@ -6,4 +6,4 @@ normal = { family = "FiraCode Nerd Font", style = "Regular" }
 size = 12
 
 [terminal]
-shell = { program = "powershell", args = ["-NoLogo"] }
+shell = { program = "powershell.exe", args = ["-NoLogo"] }

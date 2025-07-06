@@ -3,6 +3,7 @@ local wezterm = require("wezterm")
 local config = wezterm.config_builder()
 
 -- Setup shell
+--
 local launch_menu = {}
 
 if wezterm.target_triple == "x86_64-pc-windows-msvc" then
@@ -26,6 +27,6 @@ config.launch_menu = launch_menu
 config.initial_cols = 150
 config.initial_rows = 40
 config.color_scheme = "Tokyo Night"
-config.font = wezterm.font("FiraCode Nerd Font")
+config.font = wezterm.font("FiraCode Nerd Font", { weight = "Regular", italic = false })
 
 return config
