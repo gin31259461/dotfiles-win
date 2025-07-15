@@ -2,7 +2,9 @@
 -- │ 🚀 Main Config                │
 -- ╰───────────────────────────────╯
 
+---@type Wezterm
 local wezterm = require("wezterm")
+
 local config = wezterm.config_builder()
 
 require("config.appearance").apply(config)

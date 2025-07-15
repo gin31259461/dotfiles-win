@@ -1,3 +1,5 @@
+---@type Wezterm
+---@diagnostic disable-next-line
 local wezterm = require("wezterm")
 local M = {}
 
@@ -14,7 +16,7 @@ M.apply = function(config)
   config.window_close_confirmation = "NeverPrompt"
   config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
   config.use_fancy_tab_bar = false
-  config.window_background_opacity = 0.7
+  config.window_background_opacity = 0.9
   config.enable_scroll_bar = true
 end
 
