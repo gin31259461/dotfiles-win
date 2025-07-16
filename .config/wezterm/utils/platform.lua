@@ -1,4 +1,4 @@
-local wezterm = require("wezterm-module")
+local wezterm = require("module.wezterm")
 
 local M = {}
 

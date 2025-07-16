@@ -2,7 +2,7 @@
 -- │ Main Config                   │
 -- ╰───────────────────────────────╯
 
-local wezterm = require("wezterm-module")
+local wezterm = require("module.wezterm")
 local config = wezterm.config_builder()
 
 require("config.appearance").apply(config)
