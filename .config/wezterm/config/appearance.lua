@@ -1,6 +1,4 @@
----@type Wezterm
----@diagnostic disable-next-line
-local wezterm = require("wezterm")
+local wezterm = require("wezterm-module")
 local M = {}
 
 M.apply = function(config)

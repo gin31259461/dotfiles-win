@@ -1,10 +1,8 @@
 -- ╭───────────────────────────────╮
--- │ 🚀 Main Config                │
+-- │ Main Config                   │
 -- ╰───────────────────────────────╯
 
----@type Wezterm
-local wezterm = require("wezterm")
-
+local wezterm = require("wezterm-module")
 local config = wezterm.config_builder()
 
 require("config.appearance").apply(config)
@@ -12,7 +10,7 @@ require("config.launcher").apply(config)
 require("config.mapping").apply(config)
 
 -- ╭───────────────────────────────╮
--- │ 🚀 Event Function Controller  │
+-- │ Event Function Controller     │
 -- ╰───────────────────────────────╯
 
 -- initial screen
