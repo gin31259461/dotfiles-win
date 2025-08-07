@@ -9,6 +9,8 @@ require("config.appearance").apply(config)
 require("config.launcher").apply(config)
 require("config.mapping").apply(config)
 
+config.front_end = "WebGpu"
+
 -- ╭───────────────────────────────╮
 -- │ Event Function Controller     │
 -- ╰───────────────────────────────╯
