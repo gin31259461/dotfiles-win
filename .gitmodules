@@ -1,7 +1,11 @@
-# sync to .git/config
+# when modify .gitmodules, sync to .git/config
 # git submodule sync --recursive
+# git submodule update --init --recursive
 # git config --get-regexp submodule (check)
-# git submodule update --init --recursive (may need this)
+#
+# first clone
+# git submodule init (no code)
+# git submodule update -recursive (clone code)
 #
 # other tips
 # git ls-files --stage
