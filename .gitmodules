@@ -2,6 +2,10 @@
 # git submodule sync --recursive
 # git config --get-regexp submodule (check)
 # git submodule update --init --recursive (may need this)
+#
+# other tips
+# git ls-files --stage
+# git rm -r --cached <path>
 
 [submodule "alacritty-theme"]
   path = AppData/Roaming/alacritty/themes
