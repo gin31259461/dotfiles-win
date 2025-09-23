@@ -1,3 +1,8 @@
+# sync to .git/config
+# git submodule sync --recursive
+# git config --get-regexp submodule (check)
+# git submodule update --init --recursive (may need this)
+
 [submodule "alacritty-theme"]
   path = AppData/Roaming/alacritty/themes
   url = https://github.com/alacritty/alacritty-theme.git 
