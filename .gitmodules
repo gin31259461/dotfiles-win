@@ -11,11 +11,6 @@
 # git ls-files --stage
 # git rm -r --cached <path>
 
-[submodule "alacritty-theme"]
-  path = AppData/Roaming/alacritty/themes
-  url = https://github.com/alacritty/alacritty-theme.git 
-  branch = master
-
 [submodule "nvchad-config"]
   path = .config/nvim
   url = git@github.com:gin31259461/nvchad.git
