@@ -1,6 +1,6 @@
 Set-Location $HOME
 
-dot add README.md .gitmodules .gitignore dotfiles.ps1 
+dot add README.md .gitmodules .gitignore .github dotfiles.ps1 
 dot add installer
 dot add .config/wezterm
 dot add .config/visual-studio
