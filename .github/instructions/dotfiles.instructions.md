@@ -281,3 +281,50 @@ To revert back to Win11 menu:
 ```powershell
 Remove-Item -Path 'HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}' -Recurse
 ```
+
+## Commit Style
+
+Use **Conventional Commits** for all `dot commit` messages. No co-author trailers.
+
+### Format
+
+```
+<type>(<scope>): <short description>
+```
+
+- `<scope>` is optional; omit it for broad changes
+- Subject line: lowercase, imperative mood, no period, ≤72 chars
+
+### Types
+
+| Type | When to use |
+|------|-------------|
+| `feat` | Add a new feature or config |
+| `fix` | Fix a bug or broken behaviour |
+| `refactor` | Restructure without behaviour change |
+| `docs` | README, instructions, comments |
+| `chore` | Package list updates, scoop/winget additions |
+| `style` | Formatting, whitespace, cosmetic |
+| `revert` | Revert a previous commit |
+
+### Examples
+
+```
+feat: add fzf to scoop packages
+fix: profile symlink using -Target parameter
+refactor: rewrite installer with TUI
+docs: update README new machine setup
+chore: add ripgrep to winget packages
+style: align installer menu columns
+```
+
+### Dotfiles sync commits
+
+When using `dotfiles.ps1` for routine syncs, pass a descriptive `-Message`:
+
+```powershell
+.\dotfiles.ps1 -Message "chore: update nvim config"
+.\dotfiles.ps1 -Message "feat: add starship git branch style"
+```
+
+Avoid generic messages like `"sync dotfiles"` — prefer a type-scoped message that describes what actually changed.
