@@ -16,11 +16,6 @@
   url = git@github.com:gin31259461/nvchad.git
   branch = main
 
-[submodule "pwsh-setup"]
-  path = pwsh-setup
-  url = git@github.com:gin31259461/pwsh-setup.git
-  branch = main
-
 [submodule "wezterm"]
   path = .config/wezterm
   url = git@github.com:gin31259461/wezterm.git 

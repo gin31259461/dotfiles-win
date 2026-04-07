@@ -1,7 +1,7 @@
-cd $HOME
+Set-Location $HOME
 
-dot add README.md .gitmodules dotfiles.ps1 
-dot add pwsh-setup
+dot add README.md .gitmodules .gitignore dotfiles.ps1 
+dot add installer
 dot add .config/wezterm
 dot add .config/visual-studio
 dot add .config/vscode-nvim
