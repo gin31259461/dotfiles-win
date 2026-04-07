@@ -1,0 +1,111 @@
+# ~/.config/starship.toml
+"$schema" = 'https://starship.rs/config-schema.json'
+
+add_newline = false
+command_timeout = 1000
+format = """$os$username$hostname$kubernetes$directory$git_branch$git_status"""
+
+[character]
+success_symbol = '[ ](bold green)'
+error_symbol = '[](bold red)'
+
+# ╭───────────────────────────────╮
+# │ 🚀 Main Format Config         │
+# ╰───────────────────────────────╯
+
+[os]
+format = '[$symbol](bold white) '
+disabled = false
+
+[os.symbols]
+Windows = ' '
+Arch = '󰣇 '
+Ubuntu = ' '
+Macos = '󰀵 '
+
+# Shows the username
+[username]
+style_user = 'white bold'
+style_root = 'black bold'
+format = '[$user]($style) '
+disabled = false
+show_always = true
+
+# Shows the hostname
+[hostname]
+ssh_only = false
+format = 'on [$hostname](bold yellow) '
+disabled = false
+
+# Shows current directory
+[directory]
+truncation_length = 1
+truncation_symbol = '…/'
+home_symbol = '󰋜 ~'
+read_only_style = '197'
+read_only = '  '
+format = 'at [$path]($style)[$read_only]($read_only_style) '
+
+# Shows current git branch
+[git_branch]
+symbol = ' '
+format = '➜ [$symbol$branch]($style)'
+# truncation_length = 4
+truncation_symbol = '…/'
+style = 'bold green'
+
+# Shows current git status
+[git_status]
+format = '[$all_status$ahead_behind]($style) '
+style = 'bold green'
+conflicted = '🏳'
+up_to_date = ''
+untracked = ' '
+ahead = '⇡${count}'
+diverged = '⇕⇡${ahead_count}⇣${behind_count}'
+behind = '⇣${count}'
+stashed = ' '
+modified = ' '
+staged = '[++\($count\)](green)'
+renamed = ' '
+deleted = ' '
+
+[cmd_duration]
+min_time = 0
+show_milliseconds = true
+format = '[$duration]($style) '
+
+# ╭───────────────────────────────╮
+# │ 🚀 Specific Context Format    │
+# ╰───────────────────────────────╯
+
+# Shows kubernetes context and namespace
+[kubernetes]
+format = '➜ [󱃾 $context\($namespace\)](bold purple) '
+disabled = false
+
+# ╭───────────────────────────────╮
+# │ 🚀 Disabled                   │
+# ╰───────────────────────────────╯
+
+[vagrant]
+disabled = true
+
+[docker_context]
+disabled = true
+
+[helm]
+disabled = true
+
+[python]
+disabled = true
+
+[nodejs]
+disabled = true
+
+[ruby]
+disabled = true
+
+[terraform]
+disabled = true
+
