@@ -192,7 +192,50 @@ $content = [System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8)
 [System.IO.File]::WriteAllText($path, $content, $utf8bom)
 ```
 
-## Common Tasks
+## Commit Style
+
+All dotfiles commits use **Conventional Commits** with a short imperative subject line. No co-author trailers.
+
+### Format
+
+```
+<type>(<scope>): <subject>
+```
+
+- `<type>` — one of the types below
+- `<scope>` — optional, the affected area (e.g. `installer`, `profile`, `starship`, `nvim`)
+- `<subject>` — lowercase, imperative, no period
+
+### Types
+
+| Type | Use for |
+|------|---------|
+| `feat` | New feature or config option |
+| `fix` | Bug fix |
+| `refactor` | Restructure without behaviour change |
+| `docs` | README, instructions, comments |
+| `chore` | Housekeeping (rename, move, delete files) |
+| `sync` | Routine `dotfiles.ps1` syncs |
+
+### Examples
+
+```
+feat(installer): add neovim to winget packages
+fix(profile): correct goto shortcut for projects dir
+refactor: reorganise installer into packages/ subdir
+docs: update README new-machine setup steps
+chore: remove stale datree completion from profile
+sync: update nvim and starship config
+```
+
+### Rules
+
+- **No co-author trailers** — do not append `Co-authored-by:` lines
+- Use `dot commit` not `git commit` when committing dotfiles
+- Prefer atomic commits (one logical change per commit)
+- Use `.\dotfiles.ps1 -Message "sync: ..."` for bulk syncs
+
+
 
 ### Sync all dotfiles
 ```powershell
