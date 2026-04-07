@@ -1,173 +1,489 @@
-Set-ExecutionPolicy Remotesigned -Scope CurrentUser -Force | Out-Null
+﻿#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Interactive TUI installer for the Windows dotfiles environment.
+.DESCRIPTION
+    Presents a keyboard-navigable menu for selecting packages and features to
+    install. All items are pre-selected; deselect anything you don't want.
 
-# -------------------- util start --------------------
-function Push-EnvironmentVariables
-{
-  # Get all machine and user environment variables and set them in the current process
-  $machineEnv = [System.Environment]::GetEnvironmentVariables("Machine")
-  $userEnv = [System.Environment]::GetEnvironmentVariables("User")
-    
-  # Merge and update current process
-  $machineEnv.GetEnumerator() | ForEach-Object {
-    [System.Environment]::SetEnvironmentVariable($_.Key, $_.Value, "Process")
-  }
-  $userEnv.GetEnumerator() | ForEach-Object {
-    [System.Environment]::SetEnvironmentVariable($_.Key, $_.Value, "Process")
-  }
+    Navigation:  ↑ ↓
+    Toggle:      Space
+    Select all:  A
+    Deselect:    N
+    Install:     Enter
+    Quit:        Q / Escape
+.EXAMPLE
+    .\Install.ps1
+.EXAMPLE
+    .\Install.ps1 -Unattended    # install everything without the TUI
+#>
+[CmdletBinding(SupportsShouldProcess)]
+param(
+    [switch] $Unattended
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force | Out-Null
+
+# ─── Paths ───────────────────────────────────────────────────────────────────
+
+$Script:Root        = $PSScriptRoot
+$Script:PackagesDir = Join-Path $Script:Root 'packages'
+$Script:FontsDir    = Join-Path $Script:Root 'fonts'
+
+# ─── Menu Data ───────────────────────────────────────────────────────────────
+
+function New-MenuItem {
+    param(
+        [Parameter(Mandatory)] [string] $Id,
+        [Parameter(Mandatory)] [string] $Group,
+        [Parameter(Mandatory)] [string] $Name,
+        [string] $Description = '',
+        [bool]   $Selected    = $true,
+        [string] $Tag         = 'feature'
+    )
+    [PSCustomObject]@{
+        Id          = $Id
+        Group       = $Group
+        Name        = $Name
+        Description = $Description
+        Selected    = $Selected
+        Tag         = $Tag
+    }
 }
 
-function Add-ScoopAppToContextMenu
-{
-  param(
-    [Parameter(Mandatory = $true)]
-    [string]$AppName, 
-    [string]$MenuText,   
-    [string]$CommandName,
-    [string]$CommandFlag
-  )
+function Get-MenuItems {
+    $scoopPkgs  = @()
+    $wingetPkgs = @()
 
-  if (-not $MenuText)
-  {
-    $MenuText = "Open with $AppName"
-  }
+    $scoopFile  = Join-Path $Script:PackagesDir 'scoop.txt'
+    $wingetFile = Join-Path $Script:PackagesDir 'winget.txt'
 
-  $appPath = scoop prefix $AppName 2>$null
-  if (-not $appPath)
-  {
-    Write-Host "Can't find Scoop app: $AppName"
-    return
-  }
+    if (Test-Path $scoopFile) {
+        $scoopPkgs = Get-Content $scoopFile |
+            Where-Object { $_ -match '\S' -and $_ -notmatch '^\s*#' }
+    }
+    if (Test-Path $wingetFile) {
+        $wingetPkgs = Get-Content $wingetFile |
+            Where-Object { $_ -match '\S' -and $_ -notmatch '^\s*#' }
+    }
 
-  $exePath = ""
+    $items = [System.Collections.Generic.List[PSCustomObject]]::new()
 
-  if ($CommandName)
-  {
-    $exePath = "$appPath\$CommandName"
-  } else
-  {
-    $exeObject = Get-ChildItem "$appPath" -Filter "*.exe" -File -Recurse | Select-Object -First 1
-    $exePath = $exeObject.FullName
-  }
+    # ── Core ─────────────────────────────────────────────────────────────────
+    @(
+        New-MenuItem 'core-scoop'      'Core' 'Scoop'          'Fast Windows package manager'             $true  'feature'
+        New-MenuItem 'core-pwsh'       'Core' 'PowerShell 7+'  'Latest pwsh via winget'                   $true  'feature'
+        New-MenuItem 'core-psreadline' 'Core' 'PSReadLine'      'Enhanced readline for PowerShell'         $true  'feature'
+        New-MenuItem 'core-node'       'Core' 'Node.js + pnpm'  'JS runtime with fast package manager'    $true  'feature'
+    ) | ForEach-Object { $items.Add($_) }
 
-  if (-not (Test-Path $exePath))
-  {
-    Write-Host "Can't find exe in $exePath"
-    return
-  }
+    # ── Scoop Packages ───────────────────────────────────────────────────────
+    foreach ($pkg in $scoopPkgs) {
+        $items.Add((New-MenuItem "scoop-$pkg" 'Scoop Packages' $pkg '' $true 'scoop'))
+    }
 
-  $key = "HKCU:\Software\Classes\Directory\background\shell\$AppName"
-  $cmd = "$key\command"
+    # ── Winget Packages ──────────────────────────────────────────────────────
+    foreach ($pkg in $wingetPkgs) {
+        $items.Add((New-MenuItem "winget-$pkg" 'Winget Packages' $pkg '' $true 'winget'))
+    }
 
-  New-Item -Path $key -Force | Out-Null
-  Set-ItemProperty -Path $key -Name '(default)' -Value $MenuText
-  Set-ItemProperty -Path $key -Name 'icon' -Value $exePath
+    # ── Setup ────────────────────────────────────────────────────────────────
+    @(
+        New-MenuItem 'setup-fonts'       'Setup' 'Install Fonts'        'FiraCode Nerd Font, Inter, Noto Sans TC'     $true  'feature'
+        New-MenuItem 'setup-profile'     'Setup' 'PowerShell Profile'   'Symlink $profile → ~/.pwsh/profile.ps1'      $true  'feature'
+        New-MenuItem 'setup-wezterm-ctx' 'Setup' 'WezTerm Context Menu' 'Add "Open in WezTerm" to folder right-click' $true  'feature'
+        New-MenuItem 'setup-win10-menu'  'Setup' 'Win10 Context Menu'   'Restore classic Windows 10 right-click menu'  $false 'feature'
+    ) | ForEach-Object { $items.Add($_) }
 
-  New-Item -Path $cmd -Force | Out-Null
-  Set-ItemProperty -Path $cmd -Name '(default)' -Value "$exePath $CommandFlag"
-
-  Write-Host "Done: $MenuText $exePath"
+    return $items
 }
 
-# -------------------- util end --------------------
+# ─── TUI ─────────────────────────────────────────────────────────────────────
 
-# setup starship
-if (-not (Test-Path $HOME/.starship))
-{
-  Write-Output "Copying PreConfig Files"
-  Copy-Item -Path ./.starship -Destination $HOME/ -Recurse -Force
+$Script:Header = @'
+
+  ╭─────────────────────────────────────────────────────╮
+  │             Windows Dotfiles Installer              │
+  ╰─────────────────────────────────────────────────────╯
+
+'@
+
+$Script:Footer    = '  ↑↓ Navigate   Space Toggle   A Select All   N Deselect All   Enter Install   Q Quit'
+$Script:FirstDraw = $true
+
+function Write-Line {
+    param([string] $Text = '', [string] $Color = 'White', [switch] $NoNewline)
+    $width   = [Console]::BufferWidth
+    $padded  = $Text.PadRight($width)
+    if ($NoNewline) {
+        Write-Host $padded -ForegroundColor $Color -NoNewline
+    } else {
+        Write-Host $padded -ForegroundColor $Color
+    }
 }
 
+function Show-Menu {
+    param(
+        [Parameter(Mandatory)] [System.Collections.Generic.List[PSCustomObject]] $Items,
+        [Parameter(Mandatory)] [int] $Cursor
+    )
 
-# setup powershell
-if (-not (Test-Path $HOME/.pwsh))
-{
-  Write-Output "Copying PowerShell Profile"
-  Copy-Item -Path ./.pwsh -Destination $HOME/ -Recurse -Force
-  New-Item -Path $profile -Value $HOME/.pwsh/Microsoft.PowerShell_profile.ps1 -ItemType SymbolicLink -Force
+    if ($Script:FirstDraw) {
+        [Console]::Clear()
+        $Script:FirstDraw = $false
+    } else {
+        [Console]::SetCursorPosition(0, 0)
+    }
+    [Console]::CursorVisible = $false
+
+    Write-Line $Script:Header.TrimEnd() -Color Cyan
+
+    $currentGroup = $null
+    $i = 0
+
+    foreach ($item in $Items) {
+        if ($item.Group -ne $currentGroup) {
+            $currentGroup = $item.Group
+            $pad = '─' * [Math]::Max(1, 42 - $currentGroup.Length)
+            Write-Line "  ── $currentGroup $pad" -Color DarkGray
+        }
+
+        $isActive   = ($i -eq $Cursor)
+        $checkMark  = if ($item.Selected) { [char]0x2713 } else { ' ' }
+        $arrow      = if ($isActive) { '▶' } else { ' ' }
+        $checkColor = if ($item.Selected) { 'Green' } else { 'DarkGray' }
+        $nameColor  = if ($isActive) { 'Cyan' } else { 'White' }
+
+        $prefix = "  $arrow ["
+        $suffix = "] $($item.Name.PadRight(28))"
+        $desc   = if ($item.Description) { $item.Description } else { '' }
+        $full   = "$prefix$checkMark$suffix$desc"
+        $padded = $full.PadRight([Console]::BufferWidth)
+
+        Write-Host "  $arrow " -NoNewline
+        Write-Host '[' -NoNewline -ForegroundColor DarkGray
+        Write-Host $checkMark -NoNewline -ForegroundColor $checkColor
+        Write-Host '] ' -NoNewline -ForegroundColor DarkGray
+        Write-Host $item.Name.PadRight(28) -NoNewline -ForegroundColor $nameColor
+        Write-Host $desc.PadRight([Console]::BufferWidth - $full.Length + $desc.Length) -ForegroundColor DarkGray
+
+        $i++
+    }
+
+    Write-Line ''
+    Write-Line $Script:Footer -Color DarkGray
 }
 
+function Start-Menu {
+    <#
+    .SYNOPSIS
+        Run the interactive selection menu. Returns selected items or $null on cancel.
+    #>
+    param(
+        [Parameter(Mandatory)] [System.Collections.Generic.List[PSCustomObject]] $Items
+    )
 
-# -------------------- install packages --------------------
-# scoop
-# PSReadLine
-Write-Output "Installing Packages"
+    $cursor   = 0
+    $maxIndex = $Items.Count - 1
 
-Write-Output "Check for PSReadLine"
-if (-not (Get-Module -ListAvailable -Name PSReadLine))
-{
-  Install-Module PSReadLine -Force
-}
-Write-Output "Done"
+    while ($true) {
+        Show-Menu -Items $Items -Cursor $cursor
+        $key = [Console]::ReadKey($true)
 
-# -------------------- install packages via scoop --------------------
-
-Write-Output "Check for Scoop"
-if (-not (Test-Path "$env:USERPROFILE\scoop"))
-{
-  Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
-  scoop bucket add extras
-  scoop bucket add versions 
-}
-Write-Output "Done"
-
-scoop list > scoop_list.txt
-
-foreach($line in Get-Content scoop_pkgs.txt )
-{
-  Write-Output "Check for $line"
-  if (
-    (-not (Get-Content scoop_list.txt | Select-String -Pattern $line))
-  )
-  {
-    scoop install $line
-    scoop reset $line
-  }
-  Write-Output "Done"
+        switch ($key.Key) {
+            'UpArrow'   { $cursor = [Math]::Max(0, $cursor - 1) }
+            'DownArrow' { $cursor = [Math]::Min($maxIndex, $cursor + 1) }
+            'Spacebar'  { $Items[$cursor].Selected = -not $Items[$cursor].Selected }
+            'A'         { $Items | ForEach-Object { $_.Selected = $true } }
+            'N'         { $Items | ForEach-Object { $_.Selected = $false } }
+            'Enter'     { return $Items }
+            { $_ -in 'Q', 'Escape' } { return $null }
+        }
+    }
 }
 
-Add-ScoopAppToContextMenu -AppName "wezterm-nightly" -CommandName "wezterm-gui.exe" -CommandFlag "start --cwd ."
+# ─── Installation Helpers ────────────────────────────────────────────────────
 
-
-# -------------------- install packages via winget --------------------
-
-# install pwsh
-winget install --id Microsoft.Powershell --source winget
-
-winget list > winget_list.txt
-
-Write-Output "Check for NodeJS"
-if (-not (Get-Content winget_list.txt | Select-String -Pattern "NodeJS"))
-{
-  winget install --id OpenJS.NodeJS 
-  Push-EnvironmentVariables
-  npm install -g pnpm
-}
-Write-Output "Done"
-
-foreach($line in Get-Content winget_pkgs.txt )
-{
-  $tokens = $line -split "\."
-  $name = $tokens[-1]
-
-  Write-Output "Check for $line"
-  if (
-    (-not (Get-Content winget_list.txt | Select-String -Pattern $line)) -and 
-    (-not (Get-Content winget_list.txt | Select-String -Pattern $name))
-  )
-  {
-    winget install --id $line
-  }
-  Write-Output "Done"
+function Write-Step {
+    param([Parameter(Mandatory)] [string] $Message)
+    Write-Host "  ● $Message" -ForegroundColor Cyan
 }
 
-# -------------------- setup regs --------------------
-# win10 right-click menu
-# restore to win11 menu just delete reg
-Write-Output "Setup Win10 Right-click Menu"
-if (Test-Path "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32")
-{
-  reg add "HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" /f /ve
-  taskkill /f /im explorer.exe
-  Start-Process explorer.exe
+function Write-Done {
+    param([string] $Message = 'Done')
+    Write-Host "    ✓ $Message" -ForegroundColor Green
 }
-Write-Output "Done"
+
+function Write-Skip {
+    param([Parameter(Mandatory)] [string] $Name)
+    Write-Host "    ─ $Name (already installed)" -ForegroundColor DarkGray
+}
+
+function Update-EnvironmentVariables {
+    <#
+    .SYNOPSIS
+        Refresh the current process environment from machine and user scopes.
+        Call this after installing tools that modify PATH.
+    #>
+    $machineEnv = [System.Environment]::GetEnvironmentVariables('Machine')
+    $userEnv    = [System.Environment]::GetEnvironmentVariables('User')
+    $machineEnv.GetEnumerator() | ForEach-Object {
+        [System.Environment]::SetEnvironmentVariable($_.Key, $_.Value, 'Process')
+    }
+    $userEnv.GetEnumerator() | ForEach-Object {
+        [System.Environment]::SetEnvironmentVariable($_.Key, $_.Value, 'Process')
+    }
+}
+
+function Install-Font {
+    <#
+    .SYNOPSIS
+        Install a font to the current user's fonts folder (no admin required).
+        Registers it under HKCU so Windows picks it up immediately.
+    #>
+    param(
+        [Parameter(Mandatory)] [string] $FontPath
+    )
+
+    $userFontsDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
+    if (-not (Test-Path $userFontsDir)) {
+        New-Item -ItemType Directory -Path $userFontsDir -Force | Out-Null
+    }
+
+    $fontFile = [System.IO.Path]::GetFileName($FontPath)
+    $dest     = Join-Path $userFontsDir $fontFile
+
+    if (-not (Test-Path $dest)) {
+        Copy-Item $FontPath $dest -Force
+    }
+
+    $regPath = 'HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts'
+    $regName = [System.IO.Path]::GetFileNameWithoutExtension($FontPath) + ' (TrueType)'
+    New-ItemProperty -Path $regPath -Name $regName -Value $dest -PropertyType String -Force | Out-Null
+}
+
+function Add-ContextMenuItem {
+    <#
+    .SYNOPSIS
+        Add a "Open with <App>" entry to the Windows Explorer folder context menu.
+    #>
+    param(
+        [Parameter(Mandatory)] [string] $AppName,
+        [string] $MenuText    = '',
+        [string] $CommandName = '',
+        [string] $CommandFlag = ''
+    )
+
+    if (-not $MenuText) { $MenuText = "Open with $AppName" }
+
+    $appPath = scoop prefix $AppName 2>$null
+    if (-not $appPath) {
+        Write-Warning "Scoop app not found: $AppName"
+        return
+    }
+
+    $exePath = if ($CommandName) {
+        Join-Path $appPath $CommandName
+    } else {
+        (Get-ChildItem $appPath -Filter '*.exe' -File -Recurse | Select-Object -First 1).FullName
+    }
+
+    if (-not (Test-Path $exePath)) {
+        Write-Warning "Executable not found: $exePath"
+        return
+    }
+
+    $keyPath = "HKCU:\Software\Classes\Directory\background\shell\$AppName"
+    $cmdPath = "$keyPath\command"
+
+    New-Item -Path $keyPath -Force | Out-Null
+    Set-ItemProperty -Path $keyPath -Name '(default)' -Value $MenuText
+    Set-ItemProperty -Path $keyPath -Name 'icon'      -Value $exePath
+
+    New-Item -Path $cmdPath -Force | Out-Null
+    Set-ItemProperty -Path $cmdPath -Name '(default)' -Value "$exePath $CommandFlag"
+}
+
+# ─── Installation Steps ──────────────────────────────────────────────────────
+
+function Install-Selected {
+    param(
+        [Parameter(Mandatory)] [System.Collections.Generic.List[PSCustomObject]] $Items
+    )
+
+    [Console]::Clear()
+    [Console]::CursorVisible = $true
+    $Script:FirstDraw = $true
+
+    Write-Host ''
+    Write-Host '  Starting installation...' -ForegroundColor Cyan
+    Write-Host ''
+
+    $selected = $Items | Where-Object { $_.Selected }
+
+    # ── Scoop ────────────────────────────────────────────────────────────────
+    if ($selected | Where-Object Id -eq 'core-scoop') {
+        Write-Step 'Scoop...'
+        if (Test-Path "$env:USERPROFILE\scoop") {
+            Write-Skip 'Scoop'
+        } else {
+            Invoke-RestMethod https://get.scoop.sh | Invoke-Expression
+            scoop bucket add extras
+            scoop bucket add versions
+            Update-EnvironmentVariables
+            Write-Done
+        }
+    }
+
+    # ── PowerShell 7+ ────────────────────────────────────────────────────────
+    if ($selected | Where-Object Id -eq 'core-pwsh') {
+        Write-Step 'PowerShell 7+...'
+        winget install --id Microsoft.Powershell --source winget `
+            --accept-source-agreements --accept-package-agreements
+        Write-Done
+    }
+
+    # ── PSReadLine ───────────────────────────────────────────────────────────
+    if ($selected | Where-Object Id -eq 'core-psreadline') {
+        Write-Step 'PSReadLine...'
+        if (Get-Module -ListAvailable -Name PSReadLine) {
+            Write-Skip 'PSReadLine'
+        } else {
+            Install-Module PSReadLine -Force -SkipPublisherCheck
+            Write-Done
+        }
+    }
+
+    # ── Node.js + pnpm ───────────────────────────────────────────────────────
+    if ($selected | Where-Object Id -eq 'core-node') {
+        Write-Step 'Node.js + pnpm...'
+        $wingetList = winget list 2>$null | Out-String
+        if ($wingetList | Select-String 'NodeJS') {
+            Write-Skip 'Node.js'
+        } else {
+            winget install --id OpenJS.NodeJS `
+                --accept-source-agreements --accept-package-agreements
+            Update-EnvironmentVariables
+            npm install -g pnpm
+            Write-Done
+        }
+    }
+
+    # ── Scoop Packages ───────────────────────────────────────────────────────
+    $scoopItems = $selected | Where-Object Tag -eq 'scoop'
+    if ($scoopItems) {
+        Write-Step 'Scoop packages...'
+        $scoopList = scoop list 2>$null | Out-String
+        foreach ($item in $scoopItems) {
+            if ($scoopList | Select-String -Pattern $item.Name) {
+                Write-Skip $item.Name
+            } else {
+                scoop install $item.Name
+                scoop reset $item.Name
+                Write-Done $item.Name
+            }
+        }
+    }
+
+    # ── Winget Packages ──────────────────────────────────────────────────────
+    $wingetItems = $selected | Where-Object Tag -eq 'winget'
+    if ($wingetItems) {
+        Write-Step 'Winget packages...'
+        $wingetList = winget list 2>$null | Out-String
+        foreach ($item in $wingetItems) {
+            $shortName = ($item.Name -split '\.')[-1]
+            if (($wingetList | Select-String $item.Name) -or ($wingetList | Select-String $shortName)) {
+                Write-Skip $item.Name
+            } else {
+                winget install --id $item.Name `
+                    --accept-source-agreements --accept-package-agreements
+                Write-Done $item.Name
+            }
+        }
+    }
+
+    # ── Fonts ────────────────────────────────────────────────────────────────
+    if ($selected | Where-Object Id -eq 'setup-fonts') {
+        Write-Step 'Installing fonts...'
+        if (Test-Path $Script:FontsDir) {
+            Get-ChildItem $Script:FontsDir -Include '*.ttf', '*.otf' -Recurse | ForEach-Object {
+                Install-Font -FontPath $_.FullName
+            }
+            Write-Done
+        } else {
+            Write-Warning "Fonts directory not found: $Script:FontsDir"
+        }
+    }
+
+    # ── PowerShell Profile ───────────────────────────────────────────────────
+    if ($selected | Where-Object Id -eq 'setup-profile') {
+        Write-Step 'Linking PowerShell profile...'
+        $source     = "$HOME\.pwsh\profile.ps1"
+        $profileDir = Split-Path $profile -Parent
+
+        if (-not (Test-Path $source)) {
+            Write-Warning "Profile source not found: $source — clone the dotfiles repo first."
+        } else {
+            if (-not (Test-Path $profileDir)) {
+                New-Item -ItemType Directory -Path $profileDir -Force | Out-Null
+            }
+            try {
+                New-Item -ItemType SymbolicLink -Path $profile -Target $source -Force -ErrorAction Stop | Out-Null
+                Write-Done "Linked $profile → $source"
+            } catch {
+                Write-Warning "Symlink creation failed (may need admin or Developer Mode)."
+                Write-Warning "Falling back: copying profile instead."
+                Copy-Item -Path $source -Destination $profile -Force
+                Write-Done "Copied $source → $profile"
+            }
+        }
+    }
+
+    # ── WezTerm Context Menu ─────────────────────────────────────────────────
+    if ($selected | Where-Object Id -eq 'setup-wezterm-ctx') {
+        Write-Step 'WezTerm context menu entry...'
+        Add-ContextMenuItem -AppName 'wezterm-nightly' `
+            -CommandName 'wezterm-gui.exe' `
+            -CommandFlag 'start --cwd .'
+        Write-Done
+    }
+
+    # ── Win10 Classic Context Menu ───────────────────────────────────────────
+    if ($selected | Where-Object Id -eq 'setup-win10-menu') {
+        Write-Step 'Restoring Win10 classic context menu...'
+        $regPath = 'HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32'
+        if (-not (Test-Path $regPath)) {
+            New-Item -Path $regPath -Force | Out-Null
+        }
+        Set-ItemProperty -Path $regPath -Name '(default)' -Value '' -Force
+        Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue
+        Start-Process explorer.exe
+        Write-Done
+    }
+
+    Write-Host ''
+    Write-Host '  ✓ Installation complete!' -ForegroundColor Green
+    Write-Host ''
+}
+
+# ─── Entry Point ─────────────────────────────────────────────────────────────
+
+$items = Get-MenuItems
+
+if ($Unattended) {
+    Install-Selected -Items $items
+    exit 0
+}
+
+$result = Start-Menu -Items $items
+
+if ($null -eq $result) {
+    [Console]::Clear()
+    [Console]::CursorVisible = $true
+    Write-Host "`n  Cancelled.`n" -ForegroundColor Yellow
+    exit 0
+}
+
+Install-Selected -Items $result
