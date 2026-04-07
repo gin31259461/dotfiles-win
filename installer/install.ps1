@@ -102,6 +102,38 @@ function Get-MenuItems {
 
 # ─── TUI ─────────────────────────────────────────────────────────────────────
 
+$Script:ESC       = [char]27
+$Script:FirstDraw = $true
+
+# ANSI color helpers
+$Script:C = @{
+    Reset    = "$([char]27)[0m"
+    Cyan     = "$([char]27)[96m"
+    Green    = "$([char]27)[92m"
+    White    = "$([char]27)[97m"
+    Gray     = "$([char]27)[90m"
+    HideCursor = "$([char]27)[?25l"
+    ShowCursor = "$([char]27)[?25h"
+    Home       = "$([char]27)[H"
+    Clear      = "$([char]27)[2J"
+}
+
+function Enable-VirtualTerminal {
+    if ($PSVersionTable.PSVersion.Major -ge 7) { return }
+    try {
+        $sig = '
+            [DllImport("kernel32.dll")] public static extern IntPtr GetStdHandle(int n);
+            [DllImport("kernel32.dll")] public static extern bool GetConsoleMode(IntPtr h, out uint m);
+            [DllImport("kernel32.dll")] public static extern bool SetConsoleMode(IntPtr h, uint m);
+        '
+        $k = Add-Type -PassThru -Name 'K32VT' -MemberDefinition $sig -ErrorAction Stop
+        $handle = $k::GetStdHandle(-11)   # STD_OUTPUT_HANDLE
+        $mode   = 0u
+        $k::GetConsoleMode($handle, [ref]$mode) | Out-Null
+        $k::SetConsoleMode($handle, $mode -bor 4) | Out-Null  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
+    } catch { }
+}
+
 $Script:Header = @'
 
   ╭─────────────────────────────────────────────────────╮
@@ -110,19 +142,7 @@ $Script:Header = @'
 
 '@
 
-$Script:Footer    = '  ↑↓ Navigate   Space Toggle   A Select All   N Deselect All   Enter Install   Q Quit'
-$Script:FirstDraw = $true
-
-function Write-Line {
-    param([string] $Text = '', [string] $Color = 'White', [switch] $NoNewline)
-    $width   = [Console]::BufferWidth
-    $padded  = $Text.PadRight($width)
-    if ($NoNewline) {
-        Write-Host $padded -ForegroundColor $Color -NoNewline
-    } else {
-        Write-Host $padded -ForegroundColor $Color
-    }
-}
+$Script:Footer = '  ↑↓ Navigate   Space Toggle   A Select All   N Deselect All   Enter Install   Q Quit'
 
 function Show-Menu {
     param(
@@ -130,15 +150,22 @@ function Show-Menu {
         [Parameter(Mandatory)] [int] $Cursor
     )
 
-    if ($Script:FirstDraw) {
-        [Console]::Clear()
-        $Script:FirstDraw = $false
-    } else {
-        [Console]::SetCursorPosition(0, 0)
-    }
-    [Console]::CursorVisible = $false
+    $w  = [Console]::BufferWidth
+    $C  = $Script:C
+    $sb = [System.Text.StringBuilder]::new(8192)
 
-    Write-Line $Script:Header.TrimEnd() -Color Cyan
+    # Position cursor — clear only on first draw to avoid flash
+    if ($Script:FirstDraw) {
+        $Script:FirstDraw = $false
+        $sb.Append($C.Clear) | Out-Null
+    }
+    $sb.Append($C.Home)       | Out-Null
+    $sb.Append($C.HideCursor) | Out-Null
+
+    # Header
+    foreach ($line in ($Script:Header -split "`n")) {
+        $sb.Append($C.Cyan).Append($line.PadRight($w)).Append($C.Reset) | Out-Null
+    }
 
     $currentGroup = $null
     $i = 0
@@ -146,34 +173,35 @@ function Show-Menu {
     foreach ($item in $Items) {
         if ($item.Group -ne $currentGroup) {
             $currentGroup = $item.Group
-            $pad = '─' * [Math]::Max(1, 42 - $currentGroup.Length)
-            Write-Line "  ── $currentGroup $pad" -Color DarkGray
+            $pad  = '─' * [Math]::Max(1, 42 - $currentGroup.Length)
+            $line = "  ── $currentGroup $pad"
+            $sb.Append($C.Gray).Append($line.PadRight($w)).Append($C.Reset) | Out-Null
         }
 
         $isActive   = ($i -eq $Cursor)
         $checkMark  = if ($item.Selected) { [char]0x2713 } else { ' ' }
         $arrow      = if ($isActive) { '▶' } else { ' ' }
-        $checkColor = if ($item.Selected) { 'Green' } else { 'DarkGray' }
-        $nameColor  = if ($isActive) { 'Cyan' } else { 'White' }
+        $checkColor = if ($item.Selected) { $C.Green } else { $C.Gray }
+        $nameColor  = if ($isActive) { $C.Cyan  } else { $C.White }
+        $desc       = if ($item.Description) { $item.Description } else { '' }
 
-        $prefix = "  $arrow ["
-        $suffix = "] $($item.Name.PadRight(28))"
-        $desc   = if ($item.Description) { $item.Description } else { '' }
-        $full   = "$prefix$checkMark$suffix$desc"
-        $padded = $full.PadRight([Console]::BufferWidth)
+        $plainLen = 6 + $item.Name.PadRight(28).Length + $desc.Length  # visible chars
+        $padding  = ' ' * [Math]::Max(0, $w - $plainLen)
 
-        Write-Host "  $arrow " -NoNewline
-        Write-Host '[' -NoNewline -ForegroundColor DarkGray
-        Write-Host $checkMark -NoNewline -ForegroundColor $checkColor
-        Write-Host '] ' -NoNewline -ForegroundColor DarkGray
-        Write-Host $item.Name.PadRight(28) -NoNewline -ForegroundColor $nameColor
-        Write-Host $desc.PadRight([Console]::BufferWidth - $full.Length + $desc.Length) -ForegroundColor DarkGray
+        $sb.Append("  $arrow ") | Out-Null
+        $sb.Append($C.Gray).Append('[')         | Out-Null
+        $sb.Append($checkColor).Append($checkMark) | Out-Null
+        $sb.Append($C.Gray).Append('] ')        | Out-Null
+        $sb.Append($nameColor).Append($item.Name.PadRight(28)) | Out-Null
+        $sb.Append($C.Gray).Append($desc).Append($padding).Append($C.Reset) | Out-Null
 
         $i++
     }
 
-    Write-Line ''
-    Write-Line $Script:Footer -Color DarkGray
+    # Footer
+    $sb.Append($C.Gray).Append($Script:Footer.PadRight($w)).Append($C.Reset) | Out-Null
+
+    [Console]::Write($sb.ToString())
 }
 
 function Start-Menu {
@@ -313,8 +341,8 @@ function Install-Selected {
         [Parameter(Mandatory)] [System.Collections.Generic.List[PSCustomObject]] $Items
     )
 
+    [Console]::Write($Script:C.ShowCursor)
     [Console]::Clear()
-    [Console]::CursorVisible = $true
     $Script:FirstDraw = $true
 
     Write-Host ''
@@ -470,6 +498,8 @@ function Install-Selected {
 
 # ─── Entry Point ─────────────────────────────────────────────────────────────
 
+Enable-VirtualTerminal
+
 $items = Get-MenuItems
 
 if ($Unattended) {
@@ -480,8 +510,8 @@ if ($Unattended) {
 $result = Start-Menu -Items $items
 
 if ($null -eq $result) {
+    [Console]::Write($Script:C.ShowCursor)
     [Console]::Clear()
-    [Console]::CursorVisible = $true
     Write-Host "`n  Cancelled.`n" -ForegroundColor Yellow
     exit 0
 }
