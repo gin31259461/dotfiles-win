@@ -134,14 +134,6 @@ function Enable-VirtualTerminal {
     } catch { }
 }
 
-$Script:Header = @'
-
-  ╭─────────────────────────────────────────────────────╮
-  │             Windows Dotfiles Installer              │
-  ╰─────────────────────────────────────────────────────╯
-
-'@
-
 $Script:Footer = '  ↑↓ Navigate   Space Toggle   A Select All   N Deselect All   Enter Install   Q Quit'
 
 function Show-Menu {
@@ -150,32 +142,32 @@ function Show-Menu {
         [Parameter(Mandatory)] [int] $Cursor
     )
 
-    $w  = [Console]::BufferWidth
-    $C  = $Script:C
-    $sb = [System.Text.StringBuilder]::new(8192)
+    $C   = $Script:C
+    $eol = "$($C.Reset)$([char]27)[K`n"   # reset + erase to end-of-line + newline
+    $sb  = [System.Text.StringBuilder]::new(8192)
 
-    # Position cursor — clear only on first draw to avoid flash
     if ($Script:FirstDraw) {
         $Script:FirstDraw = $false
         $sb.Append($C.Clear) | Out-Null
     }
-    $sb.Append($C.Home)       | Out-Null
-    $sb.Append($C.HideCursor) | Out-Null
+    $sb.Append($C.Home).Append($C.HideCursor) | Out-Null
 
-    # Header
-    foreach ($line in ($Script:Header -split "`n")) {
-        $sb.Append($C.Cyan).Append($line.PadRight($w)).Append($C.Reset) | Out-Null
-    }
+    # ── Header ───────────────────────────────────────────────────────────────
+    $sb.Append($eol) | Out-Null
+    $sb.Append($C.Cyan).Append('  ╭─────────────────────────────────────────────────────╮').Append($eol) | Out-Null
+    $sb.Append($C.Cyan).Append('  │             Windows Dotfiles Installer              │').Append($eol) | Out-Null
+    $sb.Append($C.Cyan).Append('  ╰─────────────────────────────────────────────────────╯').Append($eol) | Out-Null
+    $sb.Append($eol) | Out-Null
 
+    # ── Items ─────────────────────────────────────────────────────────────────
     $currentGroup = $null
     $i = 0
 
     foreach ($item in $Items) {
         if ($item.Group -ne $currentGroup) {
             $currentGroup = $item.Group
-            $pad  = '─' * [Math]::Max(1, 42 - $currentGroup.Length)
-            $line = "  ── $currentGroup $pad"
-            $sb.Append($C.Gray).Append($line.PadRight($w)).Append($C.Reset) | Out-Null
+            $pad = '─' * [Math]::Max(1, 42 - $currentGroup.Length)
+            $sb.Append($C.Gray).Append("  ── $currentGroup $pad").Append($eol) | Out-Null
         }
 
         $isActive   = ($i -eq $Cursor)
@@ -185,21 +177,22 @@ function Show-Menu {
         $nameColor  = if ($isActive) { $C.Cyan  } else { $C.White }
         $desc       = if ($item.Description) { $item.Description } else { '' }
 
-        $plainLen = 6 + $item.Name.PadRight(28).Length + $desc.Length  # visible chars
-        $padding  = ' ' * [Math]::Max(0, $w - $plainLen)
-
-        $sb.Append("  $arrow ") | Out-Null
-        $sb.Append($C.Gray).Append('[')         | Out-Null
-        $sb.Append($checkColor).Append($checkMark) | Out-Null
-        $sb.Append($C.Gray).Append('] ')        | Out-Null
+        $sb.Append("  $arrow ")                              | Out-Null
+        $sb.Append($C.Gray).Append('[')                     | Out-Null
+        $sb.Append($checkColor).Append($checkMark)          | Out-Null
+        $sb.Append($C.Gray).Append('] ')                    | Out-Null
         $sb.Append($nameColor).Append($item.Name.PadRight(28)) | Out-Null
-        $sb.Append($C.Gray).Append($desc).Append($padding).Append($C.Reset) | Out-Null
+        $sb.Append($C.Gray).Append($desc).Append($eol)      | Out-Null
 
         $i++
     }
 
-    # Footer
-    $sb.Append($C.Gray).Append($Script:Footer.PadRight($w)).Append($C.Reset) | Out-Null
+    # ── Footer ────────────────────────────────────────────────────────────────
+    $sb.Append($eol) | Out-Null
+    $sb.Append($C.Gray).Append($Script:Footer).Append($eol) | Out-Null
+
+    # Clear any leftover lines from a previous (taller) render
+    $sb.Append("$([char]27)[J") | Out-Null
 
     [Console]::Write($sb.ToString())
 }
