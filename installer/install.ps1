@@ -119,6 +119,9 @@ $Script:C = @{
 }
 
 function Enable-VirtualTerminal {
+    # UTF-8 output so Unicode chars (✓ ▶ ╭ etc.) render correctly
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
     if ($PSVersionTable.PSVersion.Major -ge 7) { return }
     try {
         $sig = '
