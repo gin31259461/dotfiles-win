@@ -12,7 +12,7 @@
       as a base, then set your SSH URL as origin and save it to ~/.dotfiles-repo
       so future machines pick the right fork automatically.
 
-    Run once on a fresh machine. Optionally calls .\Install.ps1 afterwards.
+    Run once on a fresh machine. Optionally calls .\install.ps1 afterwards.
 .PARAMETER Repo
     SSH URL (or user/repo shorthand) of your dotfiles fork.
     Formats:  git@github.com:you/dotfiles-win.git   or   you/dotfiles-win
@@ -22,11 +22,11 @@
 .PARAMETER Yes
     Non-interactive — skip all optional prompts and accept defaults.
 .EXAMPLE
-    .\installer\Bootstrap.ps1
+    .\installer\bootstrap.ps1
 .EXAMPLE
-    .\installer\Bootstrap.ps1 -Repo 'git@github.com:you/dotfiles-win.git'
+    .\installer\bootstrap.ps1 -Repo 'git@github.com:you/dotfiles-win.git'
 .EXAMPLE
-    .\installer\Bootstrap.ps1 -Yes
+    .\installer\bootstrap.ps1 -Yes
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
@@ -55,7 +55,7 @@ function Invoke-Dot {
 
 # ── Load memory file ──────────────────────────────────────────────────────────
 # ~/.dotfiles-repo (if present) overrides the hardcoded defaults so a fork
-# owner's Bootstrap.ps1 auto-targets the right repo on any new machine.
+# owner's bootstrap.ps1 auto-targets the right repo on any new machine.
 if (Test-Path $DotfilesRepoFile) {
     $mem = [System.IO.File]::ReadAllText($DotfilesRepoFile).Trim()
     if ($mem) {
@@ -198,9 +198,9 @@ if (Test-Path $DotfilesDir) {
         Invoke-Dot remote set-url origin $RepoSsh
         ok "Remote origin → $RepoSsh"
 
-        # Bake the fork's URL into the deployed Bootstrap.ps1 so future
+        # Bake the fork's URL into the deployed bootstrap.ps1 so future
         # machines bootstrapped from this fork need no -Repo flag.
-        $bs = "$HOME\installer\Bootstrap.ps1"
+        $bs = "$HOME\installer\bootstrap.ps1"
         if (Test-Path $bs) {
             $lines = Get-Content $bs
             for ($i = 0; $i -lt $lines.Count; $i++) {
@@ -212,7 +212,7 @@ if (Test-Path $DotfilesDir) {
             }
             $utf8bom = New-Object System.Text.UTF8Encoding $true
             [System.IO.File]::WriteAllLines($bs, $lines, $utf8bom)
-            ok "Baked fork URL into Bootstrap.ps1"
+            ok "Baked fork URL into bootstrap.ps1"
         }
     }
 
@@ -237,13 +237,13 @@ ok "Submodules ready"
 # ── Install packages ──────────────────────────────────────────────────────────
 
 section "Install packages"
-$installScript = "$HOME\installer\Install.ps1"
-if ((Test-Path $installScript) -and (confirm "Run Install.ps1 now?")) {
+$installScript = "$HOME\installer\install.ps1"
+if ((Test-Path $installScript) -and (confirm "Run install.ps1 now?")) {
     & $installScript
 } elseif (-not (Test-Path $installScript)) {
-    note "Install.ps1 not found — skipping"
+    note "install.ps1 not found — skipping"
 } else {
-    note "Run .\installer\Install.ps1 later to install packages and features"
+    note "Run .\installer\install.ps1 later to install packages and features"
 }
 
 # ── Done ──────────────────────────────────────────────────────────────────────

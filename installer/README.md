@@ -6,13 +6,13 @@ Interactive TUI installer for the Windows dotfiles environment.
 
 ```powershell
 # Interactive — recommended
-.\Install.ps1
+.\install.ps1
 
 # Unattended — installs everything without the TUI
-.\Install.ps1 -Unattended
+.\install.ps1 -Unattended
 
 # Bootstrap a brand-new machine first
-.\Bootstrap.ps1
+.\bootstrap.ps1
 ```
 
 ## TUI Controls

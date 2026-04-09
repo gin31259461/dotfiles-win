@@ -13,9 +13,9 @@
     Install:     Enter
     Quit:        Q / Escape
 .EXAMPLE
-    .\Install.ps1
+    .\install.ps1
 .EXAMPLE
-    .\Install.ps1 -Unattended    # install everything without the TUI
+    .\install.ps1 -Unattended    # install everything without the TUI
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(

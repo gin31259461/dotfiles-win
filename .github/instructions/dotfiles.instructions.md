@@ -14,14 +14,14 @@ stow. The working tree is `$HOME`; config files live at their real paths.
 |---|---|
 | `~/.dotfiles/` | Bare git repository |
 | `~` | Working tree (all tracked files live here directly) |
-| `~/.pwsh/profile.ps1` | PowerShell profile (symlinked to `$profile` by Install.ps1) |
+| `~/.pwsh/profile.ps1` | PowerShell profile (symlinked to `$profile` by install.ps1) |
 | `~/.starship/starship.toml` | Starship prompt config |
 | `~/.config/nvim/` | Neovim config — git submodule (gin31259461/nvchad) |
 | `~/.config/wezterm/` | WezTerm config — git submodule (gin31259461/wezterm) |
 | `~/.config/vscode-nvim/` | VSCode Neovim extension keybindings |
 | `~/.config/visual-studio/` | Visual Studio exported settings |
 | `~/.config/ssms/` | SQL Server Management Studio settings |
-| `~/installer/` | Bootstrap.ps1, Install.ps1, cleanup.ps1, lib/, packages/, fonts/ |
+| `~/installer/` | bootstrap.ps1, install.ps1, cleanup.ps1, lib/, packages/, fonts/ |
 | `~/installer/lib/tui.ps1` | Shared TUI helpers — dot-sourced by all scripts |
 | `~/dotfiles.ps1` | Sync helper: stage → commit → push |
 | `~/.dotfiles-repo` | Memory file: SSH URL of the active dotfiles remote |
@@ -57,18 +57,18 @@ fall back to `"sync dotfiles"`.
 To add a new file to tracking: add it to `$TrackedPaths` in `~/dotfiles.ps1`,
 then run `dotfiles.ps1`.
 
-### `installer/Bootstrap.ps1` — new machine setup
+### `installer/bootstrap.ps1` — new machine setup
 
 Full one-command setup on a fresh Windows machine:
 
 ```powershell
 # Download and run directly:
-irm https://raw.githubusercontent.com/gin31259461/dotfiles-win/main/installer/Bootstrap.ps1 | iex
+irm https://raw.githubusercontent.com/gin31259461/dotfiles-win/main/installer/bootstrap.ps1 | iex
 
 # Or from a local clone:
-.\installer\Bootstrap.ps1
-.\installer\Bootstrap.ps1 -Repo 'git@github.com:you/dotfiles-win.git'
-.\installer\Bootstrap.ps1 -Yes   # non-interactive, accept all defaults
+.\installer\bootstrap.ps1
+.\installer\bootstrap.ps1 -Repo 'git@github.com:you/dotfiles-win.git'
+.\installer\bootstrap.ps1 -Yes   # non-interactive, accept all defaults
 ```
 
 Flags:
@@ -77,11 +77,11 @@ Flags:
 - `-DotfilesDir <path>` — custom bare repo location (default: `~/.dotfiles`)
 
 What it does: checks git → clones repo → robocopy deploys to `$HOME` →
-configures `dot` → inits submodules → optional `Install.ps1`.
+configures `dot` → inits submodules → optional `install.ps1`.
 
 **Repo selection (memory file `~/.dotfiles-repo`):**
 
-`Bootstrap.ps1` writes `~/.dotfiles-repo` after every successful clone to
+`bootstrap.ps1` writes `~/.dotfiles-repo` after every successful clone to
 remember which SSH remote URL this machine uses. The file is **tracked in the
 repo** so it is deployed to every new machine via robocopy.
 
@@ -92,21 +92,21 @@ any flags.
 | Condition | Action |
 |---|---|
 | No `-Repo`, memory file present | SSH clone from that URL (HTTPS fallback if no key) |
-| `-Repo` differs from effective default | HTTPS clone of the default repo as base; set `-Repo` URL as `origin`; **bake fork URL into deployed `Bootstrap.ps1`** so future machines need no flag |
+| `-Repo` differs from effective default | HTTPS clone of the default repo as base; set `-Repo` URL as `origin`; **bake fork URL into deployed `bootstrap.ps1`** so future machines need no flag |
 
 **Fork owner workflow:**
-1. First machine: `Bootstrap.ps1 -Repo git@github.com:you/dotfiles-win.git`
-   → clones default, sets remote, bakes your URL into `Bootstrap.ps1`, writes `~/.dotfiles-repo`
-2. Run `dotfiles.ps1` to commit and push (both `Bootstrap.ps1` and `.dotfiles-repo` are tracked)
+1. First machine: `bootstrap.ps1 -Repo git@github.com:you/dotfiles-win.git`
+   → clones default, sets remote, bakes your URL into `bootstrap.ps1`, writes `~/.dotfiles-repo`
+2. Run `dotfiles.ps1` to commit and push (both `bootstrap.ps1` and `.dotfiles-repo` are tracked)
 3. All subsequent machines: run from your fork's URL — no `-Repo` needed
 
-### `installer/Install.ps1` — interactive package installer
+### `installer/install.ps1` — interactive package installer
 
 Keyboard-navigable TUI installer for packages and features.
 
 ```powershell
-.\installer\Install.ps1              # interactive TUI
-.\installer\Install.ps1 -Unattended  # install everything silently
+.\installer\install.ps1              # interactive TUI
+.\installer\install.ps1 -Unattended  # install everything silently
 ```
 
 TUI controls: `↑↓` navigate · `Space` toggle · `A` select all · `N` deselect · `Enter` install · `Q`/`Esc` quit.
@@ -118,7 +118,7 @@ TUI controls: `↑↓` navigate · `Space` toggle · `A` select all · `N` desel
 | Winget Packages | Each line in `packages/winget.txt` |
 | Setup | Fonts, profile symlink, WezTerm context menu, Win10 classic menu |
 
-To add a new installer item, add a `New-MenuItem` call inside `Get-MenuItems` in `Install.ps1`.
+To add a new installer item, add a `New-MenuItem` call inside `Get-MenuItems` in `install.ps1`.
 
 ### `installer/cleanup.ps1` — interactive system cleanup
 
@@ -267,7 +267,7 @@ To add a winget package:
 
 ## PowerShell Profile
 
-Source: `~/.pwsh/profile.ps1` — symlinked to `$profile` by `Install.ps1`.
+Source: `~/.pwsh/profile.ps1` — symlinked to `$profile` by `install.ps1`.
 
 Key aliases and functions:
 
