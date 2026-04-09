@@ -1,11 +1,15 @@
-﻿<#
+#Requires -Version 5.1
+<#
 .SYNOPSIS
     Sync dotfiles to the remote repository.
 .DESCRIPTION
-    Stages all tracked paths, commits with a message, and pushes to origin.
+    Stages all tracked paths, commits with a message, and pushes to origin main.
     Uses a bare git repository at ~/.dotfiles with $HOME as the work tree.
+
+    When -Message is omitted an interactive prompt opens (Read-Host).
+    Leave it empty to use the default message "sync dotfiles".
 .PARAMETER Message
-    Git commit message. Default: 'sync dotfiles'
+    Git commit message. Prompted interactively when not provided.
 .PARAMETER DryRun
     Show what would be staged and committed without making any changes.
 .EXAMPLE
@@ -17,16 +21,19 @@
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
-    [string] $Message = 'sync dotfiles',
+    [string] $Message = '',
     [switch] $DryRun
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# Paths tracked by the bare git dotfiles repo
+. "$PSScriptRoot\installer\lib\tui.ps1"
+
+# ── Tracked paths ─────────────────────────────────────────────────────────────
 $TrackedPaths = @(
     'README.md'
+    '.dotfiles-repo'
     '.gitmodules'
     '.gitignore'
     '.github'
@@ -48,33 +55,46 @@ function Invoke-Dot {
 
 Set-Location $HOME
 
+# ── Commit message ────────────────────────────────────────────────────────────
+
+if (-not $Message) {
+    Write-Host ""
+    Write-Host "${BLU}?${RST}  Commit message  ${DIM}(empty = 'sync dotfiles')${RST}"
+    Write-Host "  " -NoNewline
+    $Message = Read-Host
+    if (-not $Message) { $Message = 'sync dotfiles' }
+}
+
+# ── Dry run ───────────────────────────────────────────────────────────────────
+
 if ($DryRun) {
-    Write-Host 'Dry run — the following would be staged and committed:' -ForegroundColor Yellow
-    Write-Host ''
+    warn "Dry run — the following would be staged and committed:"
+    Write-Host ""
     foreach ($path in $TrackedPaths) {
         $exists = Test-Path $path
-        $status = if ($exists) { '' } else { '  (not found)' }
-        Write-Host "  dot add $path$status" -ForegroundColor $(if ($exists) { 'DarkGray' } else { 'DarkYellow' })
+        $suffix = if ($exists) { '' } else { '  (not found)' }
+        note "  dot add $path$suffix"
     }
-    Write-Host "  dot commit -m `"$Message`"" -ForegroundColor DarkGray
-    Write-Host '  dot push origin main' -ForegroundColor DarkGray
-    Write-Host ''
+    note "  dot commit -m `"$Message`""
+    note "  dot push origin main"
+    Write-Host ""
     return
 }
 
-Write-Host 'Staging dotfiles...' -ForegroundColor Cyan
+# ── Stage, commit, push ───────────────────────────────────────────────────────
+
+section "Staging dotfiles"
 foreach ($path in $TrackedPaths) {
     if (Test-Path $path) {
         Invoke-Dot add $path
+        note "  + $path"
     } else {
-        Write-Warning "Path not found, skipping: $path"
+        warn "Path not found, skipping: $path"
     }
 }
 
-Write-Host "Committing: $Message" -ForegroundColor Cyan
-Invoke-Dot commit -m $Message
+Invoke-Spin "Committing: $Message" { Invoke-Dot commit -m $Message }
+ok "Committed: $Message"
 
-Write-Host 'Pushing to origin...' -ForegroundColor Cyan
-Invoke-Dot push origin main
-
-Write-Host 'Done.' -ForegroundColor Green
+Invoke-Spin "Pushing to origin..." { Invoke-Dot push origin main }
+ok "Pushed to origin main"
