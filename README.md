@@ -63,11 +63,10 @@ dot push origin main
 ### Option A — Bootstrap script (recommended)
 
 ```powershell
-# Download and run directly:
-irm https://raw.githubusercontent.com/gin31259461/dotfiles-win/main/installer/bootstrap.ps1 | iex
+# Download and run locally:
+irm https://raw.githubusercontent.com/gin31259461/dotfiles-win/main/installer/bootstrap.ps1 -OutFile bootstrap.ps1
 
-# Or clone first and run locally:
-.\installer\bootstrap.ps1
+.\bootstrap.ps1
 ```
 
 Flags:
@@ -136,7 +135,9 @@ your URL into the deployed `bootstrap.ps1`, and writes `~/.dotfiles-repo`.
 
 **All subsequent machines — no `-Repo` needed:**
 ```powershell
-irm https://raw.githubusercontent.com/you/dotfiles-win/main/installer/bootstrap.ps1 | iex
+irm https://raw.githubusercontent.com/you/dotfiles-win/main/installer/bootstrap.ps1 -OutFile bootstrap.ps1
+
+.\bootstrap.ps1
 ```
 
 ---
