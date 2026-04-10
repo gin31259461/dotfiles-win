@@ -35,9 +35,19 @@ function Get-FolderSize {
     param([string]$Path)
     if (-not (Test-Path $Path)) { return 'n/a' }
     try {
-        $bytes = (Get-ChildItem $Path -Recurse -ErrorAction SilentlyContinue |
-            Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum
-        if (-not $bytes) { return '0 B' }
+        # get files with error suppression in case of access issues; if it fails, return '0 B'
+        $files = Get-ChildItem $Path -Recurse -File -ErrorAction SilentlyContinue
+        if ($null -eq $files) { return '0 B' }
+
+        $measure = $files | Measure-Object -Property Length -Sum
+        
+        # safe access the Sum property, defaulting to 0 if it doesn't exist
+        $bytes = [long]0
+        if ($measure.psobject.Properties['Sum']) {
+            $bytes = [long]$measure.Sum
+        }
+
+        if ($bytes -eq 0)    { return '0 B' }
         if ($bytes -lt 1KB)  { return "$bytes B" }
         if ($bytes -lt 1MB)  { return '{0:N1} KB' -f ($bytes / 1KB) }
         if ($bytes -lt 1GB)  { return '{0:N1} MB' -f ($bytes / 1MB) }
@@ -68,12 +78,17 @@ function Get-WingetCacheSize {
         "$env:LOCALAPPDATA\Packages\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\LocalCache"
         "$env:TEMP\WinGet"
     )
-    $total = 0
+    $total = [long]0
     foreach ($p in $paths) {
         if (Test-Path $p) {
-            $b = (Get-ChildItem $p -Recurse -ErrorAction SilentlyContinue |
-                Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum
-            if ($b) { $total += $b }
+            # the same safe logic as Get-FolderSize, but without the final formatting step
+            $files = Get-ChildItem $p -Recurse -File -ErrorAction SilentlyContinue
+            if ($null -ne $files) {
+                $measure = $files | Measure-Object -Property Length -Sum
+                if ($measure.psobject.Properties['Sum']) {
+                    $total += [long]$measure.Sum
+                }
+            }
         }
     }
     if ($total -eq 0) { return '0 B' }

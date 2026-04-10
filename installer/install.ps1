@@ -168,28 +168,30 @@ function Add-ContextMenuItem {
         Add a "Open with <App>" entry to the Windows Explorer folder context menu.
     #>
     param(
-        [Parameter(Mandatory)] [string] $AppName,
-        [string] $MenuText    = '',
-        [string] $CommandName = '',
-        [string] $CommandFlag = ''
+        [Parameter(Mandatory)][string]$AppName,
+        [string]$MenuText = '',
+        [string]$CommandName = '',
+        [string]$CommandFlag = ''
     )
 
     if (-not $MenuText) { $MenuText = "Open with $AppName" }
 
-    $appPath = scoop prefix $AppName 2>$null
-    if (-not $appPath) {
-        Write-Warning "Scoop app not found: $AppName"
-        return
+    $targetName = if ($CommandName) { $CommandName } else { $AppName }
+    $exePath = (Get-Command $targetName -CommandType Application -ErrorAction SilentlyContinue).Source
+
+    if (-not $exePath) {
+        $appPath = scoop prefix $AppName 2>$null
+        if ($appPath) {
+            $exePath = if ($CommandName) {
+                Join-Path $appPath $CommandName
+            } else {
+                (Get-ChildItem $appPath -Filter '*.exe' -File -Recurse | Select-Object -First 1).FullName
+            }
+        }
     }
 
-    $exePath = if ($CommandName) {
-        Join-Path $appPath $CommandName
-    } else {
-        (Get-ChildItem $appPath -Filter '*.exe' -File -Recurse | Select-Object -First 1).FullName
-    }
-
-    if (-not (Test-Path $exePath)) {
-        Write-Warning "Executable not found: $exePath"
+    if (-not $exePath -or -not (Test-Path $exePath)) {
+        Write-Warning "Executable not found for: $AppName"
         return
     }
 
@@ -203,6 +205,7 @@ function Add-ContextMenuItem {
     New-Item -Path $cmdPath -Force | Out-Null
     Set-ItemProperty -Path $cmdPath -Name '(default)' -Value "$exePath $CommandFlag"
 }
+
 
 # ─── Installation Steps ──────────────────────────────────────────────────────
 
