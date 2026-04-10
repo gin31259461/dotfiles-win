@@ -93,7 +93,7 @@ function Get-MenuItems {
 
     # ── Setup ────────────────────────────────────────────────────────────────
     @(
-        New-MenuItem 'setup-fonts'       'Setup' 'Install Fonts'        'FiraCode Nerd Font, Inter, Noto Sans TC'     $true  'feature'
+        New-MenuItem 'setup-fonts'       'Setup' 'Install Fonts'        'FiraCode NF v3.4.0, Inter v4.1, Noto CJK'   $true  'feature'
         New-MenuItem 'setup-profile'     'Setup' 'PowerShell Profile'   'Symlink $profile → ~/.pwsh/profile.ps1'      $true  'feature'
         New-MenuItem 'setup-wezterm-ctx' 'Setup' 'WezTerm Context Menu' 'Add "Open in WezTerm" to folder right-click' $true  'feature'
         New-MenuItem 'setup-win10-menu'  'Setup' 'Win10 Context Menu'   'Restore classic Windows 10 right-click menu'  $false 'feature'

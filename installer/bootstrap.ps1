@@ -39,7 +39,51 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force -ErrorAction SilentlyContinue | Out-Null
 
-. "$PSScriptRoot\lib\tui.ps1"
+# Dot-source tui.ps1 when running from a local clone; define inline fallbacks for
+# the irm <url> | iex path where $PSScriptRoot is empty and no files are present yet.
+$_tuiPath = if ($PSScriptRoot) { Join-Path $PSScriptRoot 'lib\tui.ps1' } else { $null }
+if ($_tuiPath -and (Test-Path $_tuiPath)) {
+    . $_tuiPath
+} else {
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+    try {
+        if (-not ('TuiHelper.TuiVtHelper' -as [type])) {
+            $sig = '
+                [DllImport("kernel32.dll")] public static extern IntPtr GetStdHandle(int n);
+                [DllImport("kernel32.dll")] public static extern bool GetConsoleMode(IntPtr h, out uint m);
+                [DllImport("kernel32.dll")] public static extern bool SetConsoleMode(IntPtr h, uint m);
+            '
+            Add-Type -Name 'TuiVtHelper' -Namespace 'TuiHelper' -MemberDefinition $sig -ErrorAction Stop | Out-Null
+        }
+        $h = [TuiHelper.TuiVtHelper]::GetStdHandle(-11)
+        $m = 0u
+        [TuiHelper.TuiVtHelper]::GetConsoleMode($h, [ref]$m) | Out-Null
+        [TuiHelper.TuiVtHelper]::SetConsoleMode($h, $m -bor 4) | Out-Null
+    } catch { }
+
+    $ESC  = [char]27
+    $RED  = "${ESC}[31m"; $GRN  = "${ESC}[32m"; $YLW = "${ESC}[33m"; $BLU = "${ESC}[34m"
+    $DIM  = "${ESC}[2m";  $BOLD = "${ESC}[1m";  $RST = "${ESC}[0m"
+
+    function die     { param([string]$Message) [Console]::Error.WriteLine("`n${RED}✗${RST}  ${Message}`n"); exit 1 }
+    function ok      { param([string]$Message) Write-Host "${GRN}✔${RST}  ${Message}" }
+    function warn    { param([string]$Message) Write-Host "${YLW}!${RST}  ${Message}" }
+    function note    { param([string]$Message) Write-Host "${DIM}${Message}${RST}" }
+    function step    { param([string]$Message) Write-Host "${BLU}›${RST}  ${Message}" }
+    function section { param([string]$Title)   Write-Host ""; Write-Host "${BOLD}${BLU}◆${RST}  ${BOLD}${Title}${RST}"; Write-Host "" }
+    function Invoke-Confirm {
+        param([string]$Question)
+        Write-Host ""
+        Write-Host "${BLU}?${RST}  ${Question}  ${DIM}[y/N]${RST} " -NoNewline
+        $answer = Read-Host
+        return ($answer -match '^[Yy](es)?$')
+    }
+    function Invoke-Spin {
+        param([string]$Title, [scriptblock]$Command)
+        step $Title
+        & $Command
+    }
+}
 
 # ── Defaults (overridden by memory file at runtime) ───────────────────────────
 $DefaultRepoSsh   = 'git@github.com:gin31259461/dotfiles-win.git'
