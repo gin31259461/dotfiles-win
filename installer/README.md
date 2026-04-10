@@ -13,9 +13,18 @@ Interactive TUI installer for the Windows dotfiles environment.
 
 # Bootstrap a brand-new machine first
 .\bootstrap.ps1
+
+# System cleanup (interactive TUI)
+.\cleanup.ps1
+
+# System cleanup (unattended — runs all tasks)
+.\cleanup.ps1 -Unattended
 ```
 
 ## TUI Controls
+
+Both `install.ps1` and `cleanup.ps1` share the same keyboard-navigable menu
+(provided by `lib/tui.ps1`):
 
 | Key | Action |
 |-----|--------|
@@ -23,7 +32,7 @@ Interactive TUI installer for the Windows dotfiles environment.
 | `Space` | Toggle item |
 | `A` | Select all |
 | `N` | Deselect all |
-| `Enter` | Install selected |
+| `Enter` | Confirm / install selected |
 | `Q` / `Esc` | Quit |
 
 ## Package Lists
@@ -41,3 +50,14 @@ Lines starting with `#` are treated as comments.
 
 Drop `.ttf` or `.otf` files into `fonts/` and the installer will copy them to
 `%WINDIR%\Fonts` and register them in the user registry.
+
+## Shared TUI Library
+
+`lib/tui.ps1` is dot-sourced by all scripts.  It provides:
+
+- **VT processing** — enables ANSI escape codes on all Windows PowerShell versions
+- **Colour constants** — `$RED`, `$GRN`, `$YLW`, `$BLU`, `$CYN`, `$BOLD`, `$DIM`, `$RST`, etc.
+- **Print helpers** — `die`, `ok`, `warn`, `note`, `step`, `section`
+- **`Invoke-Confirm`** — yes/no prompt
+- **`Invoke-Spin`** — spinner for slow operations
+- **`Start-TuiMenu`** — full-screen keyboard menu (returns selected items or `$null` on cancel)

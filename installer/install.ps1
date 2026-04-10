@@ -26,6 +26,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force | Out-Null
 
+. "$PSScriptRoot\lib\tui.ps1"
+
 # ─── Paths ───────────────────────────────────────────────────────────────────
 
 $Script:Root        = $PSScriptRoot
@@ -98,134 +100,6 @@ function Get-MenuItems {
     ) | ForEach-Object { $items.Add($_) }
 
     return $items
-}
-
-# ─── TUI ─────────────────────────────────────────────────────────────────────
-
-$Script:ESC       = [char]27
-$Script:FirstDraw = $true
-
-# ANSI color helpers
-$Script:C = @{
-    Reset    = "$([char]27)[0m"
-    Cyan     = "$([char]27)[96m"
-    Green    = "$([char]27)[92m"
-    White    = "$([char]27)[97m"
-    Gray     = "$([char]27)[90m"
-    HideCursor = "$([char]27)[?25l"
-    ShowCursor = "$([char]27)[?25h"
-    Home       = "$([char]27)[H"
-    Clear      = "$([char]27)[2J"
-}
-
-function Enable-VirtualTerminal {
-    # UTF-8 output so Unicode chars (✓ ▶ ╭ etc.) render correctly
-    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-
-    if ($PSVersionTable.PSVersion.Major -ge 7) { return }
-    try {
-        $sig = '
-            [DllImport("kernel32.dll")] public static extern IntPtr GetStdHandle(int n);
-            [DllImport("kernel32.dll")] public static extern bool GetConsoleMode(IntPtr h, out uint m);
-            [DllImport("kernel32.dll")] public static extern bool SetConsoleMode(IntPtr h, uint m);
-        '
-        $k = Add-Type -PassThru -Name 'K32VT' -MemberDefinition $sig -ErrorAction Stop
-        $handle = $k::GetStdHandle(-11)   # STD_OUTPUT_HANDLE
-        $mode   = 0u
-        $k::GetConsoleMode($handle, [ref]$mode) | Out-Null
-        $k::SetConsoleMode($handle, $mode -bor 4) | Out-Null  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
-    } catch { }
-}
-
-$Script:Footer = '  ↑↓ Navigate   Space Toggle   A Select All   N Deselect All   Enter Install   Q Quit'
-
-function Show-Menu {
-    param(
-        [Parameter(Mandatory)] [System.Collections.Generic.List[PSCustomObject]] $Items,
-        [Parameter(Mandatory)] [int] $Cursor
-    )
-
-    $C   = $Script:C
-    $eol = "$($C.Reset)$([char]27)[K`n"   # reset + erase to end-of-line + newline
-    $sb  = [System.Text.StringBuilder]::new(8192)
-
-    if ($Script:FirstDraw) {
-        $Script:FirstDraw = $false
-        $sb.Append($C.Clear) | Out-Null
-    }
-    $sb.Append($C.Home).Append($C.HideCursor) | Out-Null
-
-    # ── Header ───────────────────────────────────────────────────────────────
-    $sb.Append($eol) | Out-Null
-    $sb.Append($C.Cyan).Append('  ╭─────────────────────────────────────────────────────╮').Append($eol) | Out-Null
-    $sb.Append($C.Cyan).Append('  │             Windows Dotfiles Installer              │').Append($eol) | Out-Null
-    $sb.Append($C.Cyan).Append('  ╰─────────────────────────────────────────────────────╯').Append($eol) | Out-Null
-    $sb.Append($eol) | Out-Null
-
-    # ── Items ─────────────────────────────────────────────────────────────────
-    $currentGroup = $null
-    $i = 0
-
-    foreach ($item in $Items) {
-        if ($item.Group -ne $currentGroup) {
-            $currentGroup = $item.Group
-            $pad = '─' * [Math]::Max(1, 42 - $currentGroup.Length)
-            $sb.Append($C.Gray).Append("  ── $currentGroup $pad").Append($eol) | Out-Null
-        }
-
-        $isActive   = ($i -eq $Cursor)
-        $checkMark  = if ($item.Selected) { [char]0x2713 } else { ' ' }
-        $arrow      = if ($isActive) { '▶' } else { ' ' }
-        $checkColor = if ($item.Selected) { $C.Green } else { $C.Gray }
-        $nameColor  = if ($isActive) { $C.Cyan  } else { $C.White }
-        $desc       = if ($item.Description) { $item.Description } else { '' }
-
-        $sb.Append("  $arrow ")                              | Out-Null
-        $sb.Append($C.Gray).Append('[')                     | Out-Null
-        $sb.Append($checkColor).Append($checkMark)          | Out-Null
-        $sb.Append($C.Gray).Append('] ')                    | Out-Null
-        $sb.Append($nameColor).Append($item.Name.PadRight(28)) | Out-Null
-        $sb.Append($C.Gray).Append($desc).Append($eol)      | Out-Null
-
-        $i++
-    }
-
-    # ── Footer ────────────────────────────────────────────────────────────────
-    $sb.Append($eol) | Out-Null
-    $sb.Append($C.Gray).Append($Script:Footer).Append($eol) | Out-Null
-
-    # Clear any leftover lines from a previous (taller) render
-    $sb.Append("$([char]27)[J") | Out-Null
-
-    [Console]::Write($sb.ToString())
-}
-
-function Start-Menu {
-    <#
-    .SYNOPSIS
-        Run the interactive selection menu. Returns selected items or $null on cancel.
-    #>
-    param(
-        [Parameter(Mandatory)] [System.Collections.Generic.List[PSCustomObject]] $Items
-    )
-
-    $cursor   = 0
-    $maxIndex = $Items.Count - 1
-
-    while ($true) {
-        Show-Menu -Items $Items -Cursor $cursor
-        $key = [Console]::ReadKey($true)
-
-        switch ($key.Key) {
-            'UpArrow'   { $cursor = [Math]::Max(0, $cursor - 1) }
-            'DownArrow' { $cursor = [Math]::Min($maxIndex, $cursor + 1) }
-            'Spacebar'  { $Items[$cursor].Selected = -not $Items[$cursor].Selected }
-            'A'         { $Items | ForEach-Object { $_.Selected = $true } }
-            'N'         { $Items | ForEach-Object { $_.Selected = $false } }
-            'Enter'     { return $Items }
-            { $_ -in 'Q', 'Escape' } { return $null }
-        }
-    }
 }
 
 # ─── Installation Helpers ────────────────────────────────────────────────────
@@ -337,9 +211,8 @@ function Install-Selected {
         [Parameter(Mandatory)] [System.Collections.Generic.List[PSCustomObject]] $Items
     )
 
-    [Console]::Write($Script:C.ShowCursor)
+    [Console]::Write($SHOW_CURSOR)
     [Console]::Clear()
-    $Script:FirstDraw = $true
 
     Write-Host ''
     Write-Host '  Starting installation...' -ForegroundColor Cyan
@@ -494,8 +367,6 @@ function Install-Selected {
 
 # ─── Entry Point ─────────────────────────────────────────────────────────────
 
-Enable-VirtualTerminal
-
 $items = Get-MenuItems
 
 if ($Unattended) {
@@ -503,10 +374,12 @@ if ($Unattended) {
     exit 0
 }
 
-$result = Start-Menu -Items $items
+$result = Start-TuiMenu -Items $items `
+    -Title  'Windows Dotfiles Installer' `
+    -Footer '  ↑↓ Navigate   Space Toggle   A Select All   N Deselect All   Enter Install   Q Quit'
 
 if ($null -eq $result) {
-    [Console]::Write($Script:C.ShowCursor)
+    [Console]::Write($SHOW_CURSOR)
     [Console]::Clear()
     Write-Host "`n  Cancelled.`n" -ForegroundColor Yellow
     exit 0

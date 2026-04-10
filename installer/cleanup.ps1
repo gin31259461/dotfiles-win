@@ -1,13 +1,14 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Interactive Windows system cleanup.
 .DESCRIPTION
-    Presents a selection list of cleanup tasks. Each task shows the estimated
-    reclaimable space before anything is deleted.
+    Presents a keyboard-navigable TUI selection menu of cleanup tasks. Each
+    task shows the estimated reclaimable space before anything is deleted.
 
-    Navigation:  number(s) or 'all'
-    Confirm:     Enter
+    Navigation: ↑↓ arrows — Space toggle — A select all — N deselect all
+    Confirm:    Enter
+    Cancel:     Q / Esc
 .PARAMETER Unattended
     Skip all confirmation prompts and run all selected tasks silently.
 .EXAMPLE
@@ -99,49 +100,30 @@ if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
 
 # ── Selection UI ──────────────────────────────────────────────────────────────
 
-function Show-TaskMenu {
-    section "Select cleanup tasks"
-    Write-Host "${DIM}Enter numbers (e.g. 1 3 5), a range (e.g. 1-4), or 'all'${RST}"
-    Write-Host ""
-
-    $i = 1
+function Build-CleanupMenuItems {
+    <#
+    .SYNOPSIS
+        Scans each task's disk usage and returns a menu-compatible item list.
+    #>
+    $list = [System.Collections.Generic.List[PSCustomObject]]::new()
     foreach ($task in $Script:CleanupTasks) {
         $size = & $task.SizeFn
-        $sizeColour = switch -Regex ($size) {
-            'GB'  { $RED }
-            'MB'  { $YLW }
+        $hintColor = switch -Regex ($size) {
+            'GB'    { $RED }
+            'MB'    { $YLW }
             default { $GRN }
         }
-        $sizePad = $size.PadLeft(8)
-        Write-Host "  ${DIM}$($i.ToString().PadLeft(2)))${RST}  ${sizeColour}${sizePad}${RST}  ${BOLD}$($task.Label.PadRight(28))${RST}  ${DIM}$($task.Detail)${RST}"
-        $i++
+        $list.Add([PSCustomObject]@{
+            Key         = $task.Key
+            Name        = $task.Label
+            Description = $task.Detail
+            Group       = ''
+            Selected    = $true
+            Hint        = $size
+            HintColor   = $hintColor
+        })
     }
-    Write-Host ""
-    Write-Host "${BOLD}Select:${RST} " -NoNewline
-    return Read-Host
-}
-
-function Resolve-Selection {
-    param([string]$Input, [int]$Total)
-    $keys = @()
-    $taskKeys = $Script:CleanupTasks | ForEach-Object { $_.Key }
-
-    if ($Input.Trim() -eq 'all') { return $taskKeys }
-
-    foreach ($token in ($Input -split '\s+')) {
-        if ($token -match '^(\d+)-(\d+)$') {
-            $lo = [int]$Matches[1]; $hi = [int]$Matches[2]
-            for ($n = $lo; $n -le $hi; $n++) {
-                if ($n -ge 1 -and $n -le $Total) { $keys += $taskKeys[$n - 1] }
-                else { warn "Number $n out of range (1–$Total)" }
-            }
-        } elseif ($token -match '^\d+$') {
-            $n = [int]$token
-            if ($n -ge 1 -and $n -le $Total) { $keys += $taskKeys[$n - 1] }
-            else { warn "Number $n out of range (1–$Total)" }
-        }
-    }
-    return $keys
+    return $list
 }
 
 # ── Task runners ──────────────────────────────────────────────────────────────
@@ -219,18 +201,32 @@ function confirm {
     return Invoke-Confirm $Question
 }
 
-Write-Host ""
-Write-Host "  ${BOLD}Windows System Cleanup${RST}"
-Write-Host "  ${DIM}$('─' * 40)${RST}"
-
 $selectedKeys = @()
 
 if ($Unattended) {
+    Write-Host ""
+    Write-Host "  ${BOLD}Windows System Cleanup${RST}"
+    Write-Host "  ${DIM}$('─' * 40)${RST}"
     $selectedKeys = $Script:CleanupTasks | ForEach-Object { $_.Key }
     section "Running all tasks (unattended)"
 } else {
-    $raw = Show-TaskMenu
-    $selectedKeys = Resolve-Selection $raw $Script:CleanupTasks.Count
+    step "Scanning disk usage..."
+    $menuItems = Build-CleanupMenuItems
+
+    $menuResult = Start-TuiMenu -Items $menuItems `
+        -Title  'Windows System Cleanup' `
+        -Footer '  ↑↓ Navigate   Space Toggle   A Select All   N Deselect All   Enter Confirm   Q Quit'
+
+    [Console]::Write($SHOW_CURSOR)
+    [Console]::Clear()
+
+    if ($null -eq $menuResult) { warn "Cancelled."; exit 0 }
+
+    $selectedKeys = @($menuResult | Where-Object { $_.Selected } | ForEach-Object { $_.Key })
+
+    Write-Host ""
+    Write-Host "  ${BOLD}Windows System Cleanup${RST}"
+    Write-Host "  ${DIM}$('─' * 40)${RST}"
 }
 
 if ($selectedKeys.Count -eq 0) { warn "Nothing selected."; exit 0 }
