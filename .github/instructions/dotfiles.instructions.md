@@ -126,9 +126,12 @@ Frees disk space: Scoop cache, Temp folder, npm cache, WinGet cache, Recycle Bin
 Shows reclaimable size before confirming.
 
 ```powershell
-.\installer\cleanup.ps1              # interactive (numbered task selection)
-.\installer\cleanup.ps1 -Unattended  # skip confirmations
+.\installer\cleanup.ps1              # interactive TUI (keyboard menu, same controls as install.ps1)
+.\installer\cleanup.ps1 -Unattended  # skip confirmations, run all tasks
 ```
+
+Each task shows reclaimable disk space (colour-coded) before anything is deleted.
+TUI controls: `↑↓` navigate · `Space` toggle · `A` select all · `N` deselect · `Enter` confirm · `Q`/`Esc` quit.
 
 | Key | Task |
 |---|---|
@@ -194,6 +197,21 @@ Invoke-Spin "Installing pkgs..." { scoop install $pkg }
 
 Prints a `step` line then executes the scriptblock. Use for any operation
 that may take several seconds.
+
+### `Start-TuiMenu` — keyboard selection menu
+
+```powershell
+$result = Start-TuiMenu -Items $items `
+    -Title  'My Menu' `
+    -Footer '  ↑↓ Navigate   Space Toggle   A Select All   N Deselect   Enter Confirm   Q Quit'
+
+if ($null -eq $result) { exit 0 }           # user pressed Q / Esc
+$selected = $result | Where-Object Selected  # filter chosen items
+```
+
+Each item is a `PSCustomObject` with at minimum `Name` (string) and `Selected` (bool).
+Optional fields: `Description` (right-side detail), `Group` (section heading), `Hint`
+(short label, e.g. disk size), `HintColor` (ANSI colour string for the hint).
 
 ---
 
@@ -294,10 +312,26 @@ Starship: `$ENV:STARSHIP_CONFIG = "$HOME\.starship\starship.toml"`
 this to correctly parse non-ASCII characters (Unicode icons in TUI, box-drawing
 chars, etc.).
 
+When **creating** a `.ps1` file via a tool or script, always write it with BOM:
+
 ```powershell
 $utf8bom = New-Object System.Text.UTF8Encoding $true
 [System.IO.File]::WriteAllText($path, $content, $utf8bom)
 ```
+
+When **editing** an existing `.ps1` file, verify the encoding is preserved
+(the file should begin with the byte sequence `EF BB BF`):
+
+```powershell
+$bytes = [System.IO.File]::ReadAllBytes($path)
+if ($bytes[0] -ne 0xEF -or $bytes[1] -ne 0xBB -or $bytes[2] -ne 0xBF) {
+    Write-Warning "$path is missing UTF-8 BOM — re-save with BOM"
+}
+```
+
+> **Copilot rule**: After creating or editing any `.ps1` file, verify the BOM is
+> present. If the editing tool does not preserve it, re-write the file with the
+> `[System.IO.File]::WriteAllText` method above.
 
 ---
 
@@ -316,6 +350,7 @@ style: align installer menu columns
 
 - **No co-authored-by trailers** — never append them
 - Use `dot commit` not `git commit` for dotfiles
+- **Always push after committing** — `dot push origin main`. Never leave commits unpushed at task end.
 - Prefer atomic commits (one logical change per commit)
 - Pass a descriptive `-Message` to `dotfiles.ps1` — avoid generic `"sync dotfiles"`
 
@@ -323,14 +358,49 @@ style: align installer menu columns
 
 ## Review Before Completing
 
-Before marking any task done, always:
+Before marking any task done, always work through every step below:
 
-1. **Re-read every file you changed** — check for leftover debug lines, wrong indentation, missed substitutions, or stale references
-2. **Run syntax checks** — `powershell -NoProfile -NonInteractive -Command "& { . .\path\to\script.ps1 }"` to catch parse errors
-3. **Look for related bugs** — if you changed a helper used by multiple scripts, check all call sites
-4. **Verify consistency** — confirm that docs, instructions, and README still accurately describe the code
+1. **Re-read every file you changed** — check for leftover debug lines, wrong
+   indentation, missed substitutions, or stale references.
 
-Only call a task complete after this review passes.
+2. **Run syntax checks** — use the PowerShell AST parser (no script execution needed):
+   ```powershell
+   $errors = $null
+   [System.Management.Automation.Language.Parser]::ParseFile(
+       'C:\path\to\script.ps1', [ref]$null, [ref]$errors) | Out-Null
+   $errors   # empty = clean
+   ```
+   Run this for every `.ps1` file you created or modified.
+
+3. **Check for related bugs** — search all call sites of any function or variable
+   you renamed/removed/changed. If `tui.ps1` helpers were touched, check every
+   script that dot-sources it.
+
+4. **Verify UTF-8 BOM** — for every `.ps1` file created or edited, confirm the
+   BOM is present:
+   ```powershell
+   $b = [System.IO.File]::ReadAllBytes('C:\path\to\file.ps1')
+   if ($b[0] -ne 0xEF -or $b[1] -ne 0xBB -or $b[2] -ne 0xBF) {
+       Write-Warning 'Missing UTF-8 BOM — re-save the file'
+   }
+   ```
+   If the BOM is missing, re-write with `[System.IO.File]::WriteAllText($path, $content, (New-Object System.Text.UTF8Encoding $true))`.
+
+5. **Verify consistency** — confirm that docs, instructions, and README still
+   accurately describe the changed code. Check the "After Modifying Dotfiles"
+   table below and update everything that applies.
+
+6. **Commit and push** — stage changed files, commit with a descriptive message,
+   then push:
+   ```powershell
+   dot add <files...>
+   dot commit -m "type(scope): description"
+   dot push origin main
+   ```
+   Or use `.\dotfiles.ps1 -Message "..."` which does all three.
+   **Never leave a completed task without pushing to origin.**
+
+Only mark a task complete after all six steps pass.
 
 ---
 
@@ -349,6 +419,20 @@ without syncing docs.
 | New file added to dotfiles tracking | `dotfiles.ps1` — add to `$TrackedPaths` |
 | Dotfiles file removed from tracking | `dotfiles.ps1` — remove from `$TrackedPaths` |
 | TUI conventions changed | `dotfiles.instructions.md` — update TUI Style Convention |
+| Guidelines or workflow changed | `dotfiles.instructions.md` — update the relevant section |
 | Instructions file itself | Re-read after editing to confirm accuracy |
 
-Always run `dotfiles.ps1` after updating any of the above.
+After updating any of the above, **commit and push all changes**:
+
+```powershell
+# Commit and push individual files manually:
+dot add <changed files...>
+dot commit -m "docs: ..."
+dot push origin main
+
+# Or use the sync helper (stages all tracked paths):
+.\dotfiles.ps1 -Message "docs: ..."
+```
+
+Both tracked dotfiles (`.github/`, `installer/`) and documentation changes
+must be committed in the same session — never leave them pending.
