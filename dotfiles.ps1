@@ -36,6 +36,8 @@ $TrackedPaths = @(
     '.dotfiles-repo'
     '.gitmodules'
     '.gitignore'
+    '.gitattributes'
+    '.gitconfig'
     '.github'
     'dotfiles.ps1'
     'installer'

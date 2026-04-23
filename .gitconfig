@@ -1,0 +1,31 @@
+# Windows
+[user]
+	email = qw0207060413@gmail.com
+	name = abner
+[core]
+  # commit with LF, checkout with CRLF
+  autocrlf = true 
+
+  # prevent changing file mode (executable bit) on Windows
+  filemode = false 
+
+  # ignore case in file names on Windows
+  ignorecase = true
+
+  # force use of UTF-8 encoding for commit messages and file names, 
+  # preventing issues with non-ASCII characters
+  quotePath = false
+
+  # enable support for long file paths on Windows, allowing paths longer than 260 characters
+  longpaths = true
+
+  # enable the fsmonitor feature to improve performance by monitoring file system changes,
+  # reducing the need for Git to scan the entire working directory for changes
+  fsmonitor = true
+
+  # enable support for symbolic links on Windows,
+  # allowing Git to track and manage symbolic links in the repository
+  symlinks = true
+
+[pull]
+  rebase = true
