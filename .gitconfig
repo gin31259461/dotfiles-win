@@ -4,7 +4,7 @@
 	name = abner
 [core]
   # commit with LF, checkout with CRLF
-  autocrlf = true 
+  autocrlf = input
 
   # prevent changing file mode (executable bit) on Windows
   filemode = false 
