@@ -1,22 +1,21 @@
-# Windows
 [user]
 	email = qw0207060413@gmail.com
 	name = abner
 [core]
   # commit with LF, checkout with CRLF
-  # autocrlf = true 
-  
+  # autocrlf = true
+
   # let .gitattributes handle line endings, preventing git from automatically converting line endings,
-  autocrlf = false 
+  autocrlf = false
 
   # prevent changing file mode (executable bit) on Windows
-  filemode = false 
+  filemode = false
 
   # ignore case in file names on Windows
   ignorecase = true
 
-  # force use of UTF-8 encoding for commit messages and file names, 
-  # preventing issues with non-ASCII characters
+  # force use of utf-8 encoding for commit messages and file names,
+  # preventing issues with non-ascii characters
   quotePath = false
 
   # enable support for long file paths on Windows, allowing paths longer than 260 characters
@@ -27,7 +26,7 @@
   fsmonitor = true
 
   # enable support for symbolic links on Windows,
-  # allowing Git to track and manage symbolic links in the repository
+  # allowing git to track and manage symbolic links in the repository
   symlinks = true
 
 [pull]
