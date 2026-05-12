@@ -1,4 +1,19 @@
 * text=auto eol=lf
 *.sh text eol=lf
 *.bat text eol=crlf
+
+# images, documents
 *.jpg binary
+*.png binary
+*.gif binary
+*.ico binary
+*.pdf binary
+
+# compiled files
+*.dll binary
+*.exe binary
+*.pdb binary
+
+# lockfile 
+pnpm-lock.yaml binary
+package-lock.json binary
