@@ -46,6 +46,7 @@ $TrackedPaths = @(
     '.config/vscode-nvim'
     '.config/ssms'
     '.config/nvim'
+    '.config/opencode/opencode.jsonc'
     '.pwsh'
     '.starship'
     '.vimrc'
