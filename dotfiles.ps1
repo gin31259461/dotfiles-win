@@ -50,6 +50,8 @@ $TrackedPaths = @(
     '.pwsh'
     '.starship'
     '.vimrc'
+    '.agnets'
+    '.claude/skills'
 )
 
 function Invoke-Dot {
