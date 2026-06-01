@@ -5,7 +5,7 @@ description: Parses free-form text (or documents with links) and creates one or 
 
 # Notion Add Task
 
-Resolves user input into one or more structured task entries and writes them to the Notion Tasks database (`collection://bd7e5198-eb31-8382-9818-87e37c4ac2e1`).
+Resolves user input into one or more structured task entries and writes them to the Notion `Tasks database` via `MCP`
 
 ## When to Use
 
@@ -27,27 +27,6 @@ Resolves user input into one or more structured task entries and writes them to 
 | Due date hint | No | Natural-language date extracted from input (e.g. "by Friday", "2026-06-10 9am") |
 | Priority hint | No | Natural-language priority extracted from input (e.g. "urgent", "low priority") |
 
-## Database Reference
-
-- **Data source ID**: `bd7e5198-eb31-8382-9818-87e37c4ac2e1`
-- **Writable properties** (only set these; all others are formula/read-only):
-
-| Property | Type | Values / Notes |
-|----------|------|----------------|
-| `Name` | title | Task name (required) |
-| `Description` | text | Short plain-text summary |
-| `Status` | status | `"To Do"` · `"Doing"` · `"Done"` — default `"To Do"` |
-| `Priority` | status | `"Low"` · `"Medium"` · `"High"` |
-| `date:Due:start` | ISO-8601 | Date or datetime. **Include `+08:00` offset when a time is present.** |
-| `date:Due:end` | ISO-8601 | Optional range end. Must be NULL for single dates. |
-| `date:Due:is_datetime` | int | `1` if time present, `0` if date-only |
-| `Smart List` | select | `"Someday"` — omit unless explicitly a someday task |
-| `Recur Interval` | number | Interval number for recurring tasks |
-| `Recur Unit` | select | `"Day(s)"` · `"Week(s)"` · `"Month(s)"` · `"Month(s) on the First Weekday"` · `"Month(s) on the Last Weekday"` · `"Month(s) on the Last Day"` · `"Year(s)"` |
-| `Days (Only if Set to 1 Day(s))` | multi_select | `["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]` — only when Recur Interval=1 and Recur Unit="Day(s)" |
-| `Project` | relation | JSON string of a single Projects page URL |
-| `Parent Task` | relation | JSON string of a single Tasks page URL (for sub-tasks) |
-
 ## Timezone Rules
 
 - **Workspace timezone**: GMT+8 (Asia/Taipei)
@@ -62,6 +41,7 @@ Resolves user input into one or more structured task entries and writes them to 
 ### Step 1: Parse the input
 
 Read the raw input carefully:
+
 - Extract one or more distinct tasks. A numbered list or bullet list = multiple tasks.
 - For each task identify: name, description hints, due date, time, priority, recurring pattern.
 - Note any URLs present in the text.
@@ -69,14 +49,15 @@ Read the raw input carefully:
 ### Step 2: Fetch URLs (if any)
 
 For each URL found in the input:
+
 - Use the `WebFetch` tool to retrieve the page content.
 - Summarize the relevant content in 1–3 sentences.
-- Append the summary to the task's `Description` field (prepend the source URL).
-- If fetch fails, note the URL in Description and continue.
+- If fetch fails, note the URL and continue.
 
 ### Step 3: Resolve dates
 
 Today's date is always available in the environment (`Today's date` in `<env>`).
+
 - Interpret relative dates ("tomorrow", "next Monday", "end of week") against today in **GMT+8**.
 - If a specific time is given, set `date:Due:is_datetime` = `1` and include `+08:00`.
 - If no time is given, set `date:Due:is_datetime` = `0` and use a bare date.
@@ -93,24 +74,29 @@ Today's date is always available in the environment (`Today's date` in `<env>`).
 
 Also set `Smart List` = `"Someday"` when the user uses language like "someday", "eventually", or "when I have time".
 
+### Step 4a: Map other properties
+
+Decide other properties based on input you resolved, e.g. `relations`
+
 ### Step 5: Create task(s)
 
-Use `notion_notion-create-pages` with:
-```json
-{
-  "parent": { "data_source_id": "bd7e5198-eb31-8382-9818-87e37c4ac2e1" },
-  "pages": [ { "properties": { ... } } ]
-}
-```
+Use `notion_notion-create-pages`.
 
 Create all tasks in a **single API call** (batch up to 100 pages).
 
 Minimum required property: `Name`.
 Always set `Status` = `"To Do"` unless the user says it's already in progress or done.
 
+### Step 5a: Write content
+
+Use `append_block_children` to add task details to the page content.
+
+If the task has clearly defined items that need to be completed, create `/todo` blocks
+
 ### Step 6: Confirm
 
 After the API call succeeds, reply to the user with:
+
 - A brief summary of what was created (task name, due date if set, priority if set).
 - The Notion page URL(s) returned.
 
@@ -118,7 +104,6 @@ After the API call succeeds, reply to the user with:
 
 - [ ] Each task has a `Name`
 - [ ] Datetime values include `+08:00` offset; date-only values do not
-- [ ] No formula/read-only columns are written (`Created`, `Edited`, `Next Due`, `Due Stamp (Parent)`, `Due Timestamp`, `Meta Labels`, `Localization Key`, `Sub-Task Arrow`, `Sub-Task Sorter`, `Recurring Tasks Divider`, `UTC Offset`, `Project Active`, `Parent Project`)
 - [ ] URL fetch attempted for every link in input
 - [ ] Single `create-pages` call used (not one call per task)
 
