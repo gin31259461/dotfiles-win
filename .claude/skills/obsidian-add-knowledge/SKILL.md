@@ -101,6 +101,7 @@ Only migrate a section when the match is clear and unambiguous. When in doubt, l
 ### Step 4: Write the content to the target file
 
 **Format rules (from AGENTS.md):**
+
 - Use `##` for top-level sections; no `#` title heading unless the file already has one.
 - Fenced code blocks with language tags.
 - Bold for UI labels / key terms; `==highlight==` for critical values.
@@ -110,8 +111,10 @@ Only migrate a section when the match is clear and unambiguous. When in doubt, l
 - Match the language already used in the file (Chinese or English).
 
 **Frontmatter:**
+
 - Only add YAML frontmatter if the file already has it.
 - If creating a new file and sibling files in the same directory use frontmatter, add it:
+
   ```yaml
   ---
   id: <filename-without-extension>
@@ -123,11 +126,13 @@ Only migrate a section when the match is clear and unambiguous. When in doubt, l
   ```
 
 **Placement when updating an existing file:**
+
 - Append new `##` sections at the end of the file.
 - If the content clearly belongs inside an existing section (e.g., a new subsection), insert it there instead.
 - Preserve all existing content exactly.
 
 **Placement when creating a new file:**
+
 - Write the content directly; do not add a `#` title heading.
 - Do add frontmatter if siblings use it.
 
@@ -144,6 +149,7 @@ If sections were extracted from `misc.md` in Step 3:
 ### Step 6: Confirm to the user
 
 Report briefly:
+
 - Where the content was saved (relative vault path).
 - Which sections (if any) were migrated from `misc.md`.
 - If a new file was created.

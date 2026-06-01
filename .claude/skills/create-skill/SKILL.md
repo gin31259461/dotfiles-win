@@ -33,6 +33,7 @@ This skill helps you scaffold new agent skills that conform to the Agent Skills 
 ### Step 1: Validate the skill name
 
 Ensure the name:
+
 - Contains only lowercase letters, numbers, and hyphens
 - Does not start or end with a hyphen
 - Does not contain consecutive hyphens

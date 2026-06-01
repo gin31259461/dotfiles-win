@@ -50,7 +50,6 @@ $TrackedPaths = @(
     '.pwsh'
     '.starship'
     '.vimrc'
-    '.agnets'
     '.claude/skills'
 )
 
