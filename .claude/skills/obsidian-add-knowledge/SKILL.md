@@ -42,7 +42,7 @@ Determine whether `content` is:
 
 ### Step 2: Extract source material
 
-- **URL**: Use `webfetch` to download the page. Extract the title, a concise summary (2-4 paragraphs), and key bullet points. Note the source URL.
+- **URL**: Use `WebFetch` to download the page. Extract the title, a concise summary (2-4 paragraphs), and key bullet points. Note the source URL.
 - **File path**: Read the file. If it is a binary or image, extract metadata only; if text, extract key content.
 - **Plain text**: Use directly. If very long (>2000 chars), produce a concise summary first.
 
