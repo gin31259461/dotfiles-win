@@ -21,8 +21,8 @@
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
-    [string] $Message = '',
-    [switch] $DryRun
+  [string] $Message = '',
+  [switch] $DryRun
 )
 
 Set-StrictMode -Version Latest
@@ -32,69 +32,82 @@ $ErrorActionPreference = 'Stop'
 
 # ── Tracked paths ─────────────────────────────────────────────────────────────
 $TrackedPaths = @(
-    'README.md'
-    '.dotfiles-repo'
-    '.gitmodules'
-    '.gitignore'
-    '.gitattributes'
-    '.gitconfig'
-    '.github'
-    'dotfiles.ps1'
-    'installer'
-    '.config/wezterm'
-    '.config/visual-studio'
-    '.config/vscode-nvim'
-    '.config/ssms'
-    '.config/nvim'
-    '.config/opencode/opencode.jsonc'
-    '.pwsh'
-    '.starship'
-    '.vimrc'
-    '.claude/skills'
+  'README.md'
+  '.dotfiles-repo'
+  '.gitmodules'
+  '.gitignore'
+  '.gitattributes'
+  '.gitconfig'
+  'dotfiles.ps1'
+  'installer'
+  '.config/wezterm'
+  '.config/visual-studio'
+  '.config/vscode-nvim'
+  '.config/ssms'
+  '.config/nvim'
+  '.config/opencode/opencode.jsonc'
+  '.pwsh'
+  '.starship'
+  '.vimrc'
+  '.claude/skills'
+  'AGENTS.md'
 )
 
-function Invoke-Dot {
-    git --git-dir="$HOME/.dotfiles/" --work-tree="$HOME" @Args
+function Invoke-Dot
+{
+  git --git-dir="$HOME/.dotfiles/" --work-tree="$HOME" @Args
 }
 
 Set-Location $HOME
 
 # ── Commit message ────────────────────────────────────────────────────────────
 
-if (-not $Message) {
-    Write-Host ""
-    Write-Host "${BLU}?${RST}  Commit message  ${DIM}(empty = 'sync dotfiles')${RST}"
-    Write-Host "  " -NoNewline
-    $Message = Read-Host
-    if (-not $Message) { $Message = 'sync dotfiles' }
+if (-not $Message)
+{
+  Write-Host ""
+  Write-Host "${BLU}?${RST}  Commit message  ${DIM}(empty = 'sync dotfiles')${RST}"
+  Write-Host "  " -NoNewline
+  $Message = Read-Host
+  if (-not $Message)
+  { $Message = 'sync dotfiles' 
+  }
 }
 
 # ── Dry run ───────────────────────────────────────────────────────────────────
 
-if ($DryRun) {
-    warn "Dry run — the following would be staged and committed:"
-    Write-Host ""
-    foreach ($path in $TrackedPaths) {
-        $exists = Test-Path $path
-        $suffix = if ($exists) { '' } else { '  (not found)' }
-        note "  dot add $path$suffix"
+if ($DryRun)
+{
+  warn "Dry run — the following would be staged and committed:"
+  Write-Host ""
+  foreach ($path in $TrackedPaths)
+  {
+    $exists = Test-Path $path
+    $suffix = if ($exists)
+    { '' 
+    } else
+    { '  (not found)' 
     }
-    note "  dot commit -m `"$Message`""
-    note "  dot push origin main"
-    Write-Host ""
-    return
+    note "  dot add $path$suffix"
+  }
+  note "  dot commit -m `"$Message`""
+  note "  dot push origin main"
+  Write-Host ""
+  return
 }
 
 # ── Stage, commit, push ───────────────────────────────────────────────────────
 
 section "Staging dotfiles"
-foreach ($path in $TrackedPaths) {
-    if (Test-Path $path) {
-        Invoke-Dot add $path
-        note "  + $path"
-    } else {
-        warn "Path not found, skipping: $path"
-    }
+foreach ($path in $TrackedPaths)
+{
+  if (Test-Path $path)
+  {
+    Invoke-Dot add $path
+    note "  + $path"
+  } else
+  {
+    warn "Path not found, skipping: $path"
+  }
 }
 
 Invoke-Spin "Committing: $Message" { Invoke-Dot commit -m $Message }
