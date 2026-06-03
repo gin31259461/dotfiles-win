@@ -7,6 +7,8 @@ description: Manages the Personal Finance Notion workspace — recording transac
 
 Provides a complete workflow for interacting with the Personal Finance Notion workspace. The system consists of five linked databases. This skill covers every operation: inserting transactions, managing fixed expenses, maintaining reference data (categories, accounts), generating monthly reports, and summarizing finances.
 
+**Critical**: Do NOT hardcode any IDs (data source, template, or page). Always discover them dynamically via the Pre-flight workflow below.
+
 ## When to Use
 
 - User wants to log an income or expense transaction
@@ -22,17 +24,70 @@ Provides a complete workflow for interacting with the Personal Finance Notion wo
 - Modifying the database *schemas* (add/remove properties) — use `notion-update-data-source` directly
 - Reading Finance Dashboard pages — fetch the page URL directly instead
 
+## Pre-flight: Discover Database IDs
+
+Before any workflow, discover all database data source URLs dynamically by fetching the **Personal Finance** page:
+
+### Step 1 — Find the Personal Finance page
+
+Search for it by name:
+
+```
+notion_notion-search(query = "Personal Finance")
+```
+
+Look for the result with title "Personal Finance". Use its `id` or `url`.
+
+### Step 2 — Fetch and extract database entries
+
+Fetch the page to reveal linked databases:
+
+```
+notion_notion-fetch(id = "<personal finance page id/url>")
+```
+
+The response contains `<database>` tags with `data-source-url` attributes:
+
+```xml
+<database data-source-url="collection://<uuid>">Transactions DB</database>
+<database data-source-url="collection://<uuid>">Categories DB</database>
+<database data-source-url="collection://<uuid>">Accounts DB</database>
+<database data-source-url="collection://<uuid>">Fixed Expenses DB</database>
+<database data-source-url="collection://<uuid>">Monthly Report DB</database>
+```
+
+Extract both forms for each:
+
+| Variable | For search `data_source_url` | For create `parent.data_source_id` |
+|---|---|---|
+| `$transactionsDS` | `collection://<uuid>` | `<uuid>` |
+| `$categoriesDS` | `collection://<uuid>` | `<uuid>` |
+| `$accountsDS` | `collection://<uuid>` | `<uuid>` |
+| `$fixedExpensesDS` | `collection://<uuid>` | `<uuid>` |
+| `$monthlyReportDS` | `collection://<uuid>` | `<uuid>` |
+
+### Step 3 — Discover the Monthly Report template
+
+Fetch the Monthly Report DB to find template pages:
+
+```
+notion_notion-fetch(id = "<monthly report db page url>")
+```
+
+Look for `<templates>` section in the response. Extract the template page ID (UUID) — this is the `template_id` to use when creating monthly reports. If no templates section exists, fetch each page in the Monthly Report DB to find one with title containing "Template" and use its ID.
+
+### Step 4 — Discover Category and Account page URLs
+
+Before creating transactions, always search the Categories DB and Accounts DB to resolve current page URLs (do not reuse cached URLs from previous sessions):
+
+```
+notion_notion-search(query = "<category name>", data_source_url = $categoriesDS)
+notion_notion-search(query = "<account name>", data_source_url = $accountsDS)
+```
+
 ## Database Reference
 
-All five databases live under the **💰 Personal Finance** page.
-
-| Database | Icon | Data Source ID | Purpose |
-|---|---|---|---|
-| Transactions DB | 💸 | `374e5198-eb31-80db-829c-000bc278fc83` | Every income and expense event |
-| Categories DB | 🏷️ | `374e5198-eb31-80c8-a554-000ba26b86da` | Category definitions + monthly budgets |
-| Accounts DB | 🏦 | `374e5198-eb31-8050-a7fa-000bf463ec46` | Bank/cash accounts + balances |
-| Fixed Expenses DB | 📋 | `374e5198-eb31-80ed-8947-000b9e7a9884` | Recurring expense definitions |
-| Monthly Report DB | 📊 | `aa21aa5c-c752-43df-9f62-fa7b9d8c9259` | Monthly reports aggregating income, expenses, and net |
+All five databases live under the **💰 Personal Finance** page. Discover their IDs dynamically (see Pre-flight above).
 
 ### Transactions DB — Writable Properties
 
@@ -99,7 +154,7 @@ All five databases live under the **💰 Personal Finance** page.
 | `Total Spending` | formula | **read-only** — `Variable Spending + Fixed Burden` |
 | `Net` | formula | **read-only** — `Total Income − Variable Spending − Fixed Burden` |
 
-**Page template ID**: `374e5198-eb31-8132-b454-cf0fff27966c` — apply with `notion_notion-update-page` (`apply_template` command) or use as `template_id` in `notion_notion-create-pages`.
+The Monthly Report DB has a template page — discover it dynamically via Pre-flight Step 3.
 
 ## Reference Data (Pre-populated)
 
@@ -137,6 +192,10 @@ Add new accounts as needed via the Accounts DB workflow.
 
 ## Workflows
 
+### Workflow 0: Pre-flight (run first)
+
+Before any workflow below, run the Pre-flight workflow above to discover all database data source IDs and store them as variables (`$transactionsDS`, `$categoriesDS`, `$accountsDS`, `$fixedExpensesDS`, `$monthlyReportDS`, `$templateId`).
+
 ### Workflow A: Add a Transaction (Income or Expense)
 
 #### Step 1 — Parse input
@@ -157,7 +216,7 @@ Search Categories DB to get the page URL:
 ```
 notion_notion-search(
   query = "<category name>",
-  data_source_url = "collection://374e5198-eb31-80aa-abab-000bc47a37a7"
+  data_source_url = $categoriesDS
 )
 ```
 
@@ -170,7 +229,7 @@ Search Accounts DB:
 ```
 notion_notion-search(
   query = "<account name>",
-  data_source_url = "collection://374e5198-eb31-80f3-9cc6-000b09106f59"
+  data_source_url = $accountsDS
 )
 ```
 
@@ -180,7 +239,7 @@ If no matching category exists, create it first:
 
 ```
 notion_notion-create-pages(
-  parent = { data_source_id: "374e5198-eb31-80aa-abab-000bc47a37a7" },
+  parent = { data_source_id: $categoriesDS },
   pages = [{ properties: { "Category Name": "<name>" } }]
 )
 ```
@@ -191,7 +250,7 @@ Use the returned URL for the transaction's `Category` relation.
 
 ```
 notion_notion-create-pages(
-  parent = { data_source_id: "374e5198-eb31-8047-9b3e-000bd1d10f27" },
+  parent = { data_source_id: $transactionsDS },
   pages = [{
     properties: {
       "Item Name": "<name>",
@@ -227,13 +286,23 @@ Extract:
 
 #### Step 2 — Check for duplicates
 
-Search Fixed Expenses DB before inserting:
+Search Fixed Expenses DB before inserting. `data_source_url` scoped search is unreliable, so use a two-pass approach:
+
+**Pass 1** — Try scoped search:
 
 ```
 notion_notion-search(
   query = "<item name>",
-  data_source_url = "collection://374e5198-eb31-8061-b61f-000bda3ffef6"
+  data_source_url = $fixedExpensesDS
 )
+```
+
+**Pass 2** — If Pass 1 returns zero results or `type` is `workspace_search`, fall back to workspace search + ancestor-path verification:
+
+```
+notion_notion-search(query = "<item name>")
+# For each result, fetch and check:
+# <parent-data-source url="collection://<matches $fixedExpensesDS>" name="Fixed Expenses DB"/>
 ```
 
 If an entry with the same name already exists, **update** it with `notion_notion-update-page` instead of creating a duplicate.
@@ -244,7 +313,7 @@ Create:
 
 ```
 notion_notion-create-pages(
-  parent = { data_source_id: "374e5198-eb31-8061-b61f-000bda3ffef6" },
+  parent = { data_source_id: $fixedExpensesDS },
   pages = [{
     properties: {
       "Item Name": "<name>",
@@ -287,7 +356,7 @@ Search Accounts DB first. If found, offer to update instead.
 
 ```
 notion_notion-create-pages(
-  parent = { data_source_id: "374e5198-eb31-80f3-9cc6-000b09106f59" },
+  parent = { data_source_id: $accountsDS },
   pages = [{
     properties: {
       "Account Name": "<name>",
@@ -304,7 +373,7 @@ notion_notion-create-pages(
 ```
 notion_notion-search(
   query = "<category or item>",
-  data_source_url = "collection://374e5198-eb31-8047-9b3e-000bd1d10f27"
+  data_source_url = $transactionsDS
 )
 ```
 
@@ -312,7 +381,7 @@ Then fetch individual pages to read Amount + Date.
 
 #### Fixed expense monthly burden
 
-Fetch Fixed Expenses DB and read the `Monthly Amortization` formula value from each page.
+Find all pages in the Fixed Expenses DB using the same two-pass approach as Workflow F Step 2 (workspace search + ancestor-path verification). For each verified page, read `Amount` and `Billing Cycle` to compute Monthly Amortization (Monthly = Amount, Annually = round(Amount / 12)). Sum all qualifying MA values where Amount > 0.
 
 #### Account balance
 
@@ -332,17 +401,23 @@ When migrating many rows from an external source:
 4. **Create reference data first** — insert Categories and Accounts before Transactions (relations require existing page URLs).
 5. **Batch inserts** — use a single `notion_notion-create-pages` call per database (up to 100 pages per call).
 
-### Workflow F: Create a Monthly Report
+### Workflow F: Create a Monthly Report (Auto-Linking)
 
-One row per month. Link existing Transactions and Fixed Expenses to compute aggregates automatically.
+One row per month. **All** fixed expenses and month transactions are auto-linked dynamically — no manual relation setup and no hardcoded lists.
 
-#### Step 1 — Create the report row from template
+#### Step 0 — Pre-flight
+
+Ensure `$monthlyReportDS`, `$fixedExpensesDS`, `$transactionsDS`, and `$templateId` are resolved (run Workflow 0 if needed).
+
+#### Step 1 — Discover and apply the template
+
+Create the report row using the dynamically discovered template:
 
 ```
 notion_notion-create-pages(
-  parent = { data_source_id: "aa21aa5c-c752-43df-9f62-fa7b9d8c9259" },
+  parent = { data_source_id: $monthlyReportDS },
   pages = [{
-    template_id: "374e5198-eb31-8119-ab9a-fbb463936cd2",
+    template_id: $templateId,
     properties: {
       "Month": "2026-06",
       "date:Period Start:start": "2026-06-01",
@@ -352,9 +427,89 @@ notion_notion-create-pages(
 )
 ```
 
-#### Step 2 — Link Transactions
+#### Step 2 — Auto-link ALL Fixed Expenses (Monthly Amortization > 0)
 
-Search Transactions DB for the target month, collect page URLs, then update the report:
+Find all pages in the Fixed Expenses DB. **Do not** rely solely on `data_source_url` in `notion_notion-search` — it has known unreliability and may return zero results even when pages exist. Use a two-pass approach:
+
+**Pass 1** — Try scoped search (fast path):
+
+```
+notion_notion-search(
+  query = "a",
+  data_source_url = $fixedExpensesDS,
+  page_size = 25
+)
+```
+
+If it returns pages with `type: "page"`, verify each belongs to `$fixedExpensesDS` via ancestor-path check, then collect.
+
+**Pass 2** — Fall back to workspace search + verification if Pass 1 returned zero results or `type` is `workspace_search`:
+
+Search the workspace broadly for known fixed expense names (e.g. "貸款", "電信", "Copilot", "燃料", "牌照") or simply pages created near the finance setup date. For each candidate, fetch the page and inspect its `<ancestor-path>`:
+
+```
+notion_notion-fetch(id = "<candidate page url>")
+# Check if response contains:
+# <parent-data-source url="collection://<matches $fixedExpensesDS>" name="Fixed Expenses DB"/>
+```
+
+Only include pages that pass this verification.
+
+For each verified Fixed Expense page, read its `Amount` and `Billing Cycle` to determine `Monthly Amortization`:
+
+- `Monthly` cycle → MA = `Amount` (> 0 if Amount > 0)
+- `Annually` cycle → MA = `round(Amount / 12)` (> 0 if Amount > 0)
+
+**Only link fixed expenses where Monthly Amortization > 0.** (If Amount is 0 or null, skip it.)
+
+Collect all qualifying page URLs and link them to the report:
+
+```
+notion_notion-update-page(
+  page_id = "<report page id>",
+  command = "update_properties",
+  properties = {
+    "Fixed Expenses": "[\"<url 1>\", \"<url 2>\", ...]"
+  }
+)
+```
+
+This links every qualifying fixed expense regardless of count — no hardcoded list.
+
+#### Step 3 — Auto-link ALL month Transactions
+
+Search Transactions DB for transactions within the target month. **Do not** rely solely on `data_source_url` in `notion_notion-search` — it has known unreliability and may return zero results even when pages exist. Use a two-pass approach:
+
+**Pass 1** — Try scoped search (fast path):
+
+```
+notion_notion-search(
+  query = "YYYY-MM",
+  data_source_url = $transactionsDS,
+  page_size = 25
+)
+```
+
+If it returns pages with `type: "page"`, verify each via ancestor-path check (response contains `<parent-data-source url="collection://...">` matching `$transactionsDS`), then collect their URLs and skip to linking below.
+
+**Pass 2** — Fall back to workspace search + verification if Pass 1 returned zero results or `type` is `workspace_search`:
+
+Search the workspace broadly. Try multiple queries to maximize coverage:
+
+- The month label: `notion_notion-search(query = "YYYY-MM")`
+- Known transaction item names (e.g. "加油", "Income", "Expense")
+- Recent pages by scanning various terms
+
+For each candidate result, fetch the page and inspect its `<ancestor-path>`. Only include pages whose ancestor chain contains a `<parent-data-source>` with `url` matching `$transactionsDS` AND a `date:Date:start` value within the target month:
+
+```
+notion_notion-fetch(id = "<candidate page url>")
+# Check if response contains:
+# <parent-data-source url="collection://<matches $transactionsDS>" name="Transactions DB"/>
+# AND properties.date:Date:start starts with "YYYY-MM"
+```
+
+Collect all verified transaction page URLs and link them to the report:
 
 ```
 notion_notion-update-page(
@@ -366,21 +521,7 @@ notion_notion-update-page(
 )
 ```
 
-Alternatively, update each transaction directly to set its `Monthly Ledger` relation to the report page URL.
-
-#### Step 3 — Link Fixed Expenses
-
-Add active fixed expenses for the month:
-
-```
-notion_notion-update-page(
-  page_id = "<report page id>",
-  command = "update_properties",
-  properties = {
-    "Fixed Expenses": "[\"<fe url 1>\", \"<fe url 2>\", ...]"
-  }
-)
-```
+If no transactions exist yet for the month, skip linking — they can be linked later as transactions are added.
 
 #### Step 4 — Computed properties auto-update
 
@@ -388,17 +529,17 @@ Once relations are set, all aggregates update automatically:
 
 - `Total Income` = sum of Income transactions
 - `Variable Spending` = sum of Expense transactions
-- `Fixed Burden` = sum of monthly amortizations
+- `Fixed Burden` = sum of Monthly Amortization from all linked Fixed Expenses
 - `Total Spending` = Variable Spending + Fixed Burden
 - `Net` = Total Income − Total Spending
 
 #### Step 5 — Confirm
 
-Reply with the month, Total Income, Total Spending, Net, and the Notion URL of the report page.
+Reply with the month, Total Income, Total Spending, Net, the full Fixed Burden breakdown (each expense + amount), and the Notion URL of the report page.
 
 ## Validation
 
-- [ ] No duplicate entries: searched target DB before inserting
+- [ ] Ran Pre-flight to discover all IDs — no hardcoded UUIDs used
 - [ ] Category and Account relations are JSON arrays of page URLs, not IDs or names
 - [ ] `Amount` is always a positive number regardless of Income/Expense
 - [ ] Datetime values include `+08:00`; date-only values do not
@@ -411,12 +552,16 @@ Reply with the month, Total Income, Total Spending, Net, and the Notion URL of t
 
 | Pitfall | Solution |
 |---|---|
+| Hardcoding data source IDs | Always run Pre-flight to discover IDs dynamically — they can change if databases are recreated |
+| Hardcoding template IDs | Discover template page ID from Monthly Report DB each session |
 | Hardcoding category/account URLs | Always search or fetch the DB to resolve current URLs |
 | Writing `Amount` as negative for Expense | Always positive — `Flow_Amount` formula handles the sign |
 | Setting `is_datetime = 1` with a bare date string | Use `"YYYY-MM-DD"` + `is_datetime = 0`, or `"YYYY-MM-DDTHH:MM:SS+08:00"` + `is_datetime = 1` |
 | Creating duplicate Fixed Expenses | Search before inserting; update if entry already exists |
 | Linking Category by name string | Relations require a JSON array of page URLs, e.g. `["https://app.notion.com/p/..."]` |
 | Creating one Fixed Expense row per month | Fixed Expenses are definitions, not per-period records; one row per recurring item |
-| Creating a transaction without an Account | Account is required for balance rollup to work; default to 現金 if unspecified |
+| Creating a transaction without an Account | Account is required for balance rollup to work; default to `現金` if user does not specify |
 | Setting `Total Months` to `0` for indefinite | Use `null` or `-1`; `0` is ambiguous and may be treated as a zero-length loan |
 | Creating duplicate Monthly Ledger rows for the same month | Search Monthly Ledger before creating; update existing row if found |
+| `notion_notion-search` with `data_source_url` returns zero results despite pages existing | `data_source_url` scoped search is unreliable. Use two-pass fallback: workspace search + ancestor-path verification. Applies to ALL database searches (Transactions, Fixed Expenses, Categories, Accounts). See Workflow F Steps 2-3 for the pattern |
+| Linking fixed expenses with $0 or null Monthly Amortization | Only link fixed expenses where Monthly Amortization > 0. Check `Amount` > 0 before computing MA (Monthly = Amount, Annually = round(Amount / 12)) |
