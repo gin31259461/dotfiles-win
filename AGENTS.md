@@ -1,561 +1,101 @@
-# Windows Dotfiles
+﻿# Windows Dotfiles
 
-Guidelines for AI coding agents working in this Windows bare-repo dotfiles setup.
+Guidelines for AI agents working in this Windows bare-repo dotfiles setup.
 
-## Repository Layout
-
-These dotfiles are managed with a **bare git repository** — no symlinks, no stow.
-The working tree is `$HOME`; config files live at their real paths.
+## Repo Layout
 
 | Path | Purpose |
 |---|---|
-| `~` | Working tree (all tracked files live here directly) |
+| `~` | Working tree (all tracked files at real paths) |
 | `~/.dotfiles/` | Bare git repository |
-| `~/.pwsh/profile.ps1` | PowerShell profile (symlinked to `$profile` by install.ps1) |
+| `~/.pwsh/profile.ps1` | PowerShell profile (symlinked to `$profile`) |
 | `~/.starship/starship.toml` | Starship prompt config |
-| `~/.config` | Config directory for various tools (Neovim, WezTerm, VSCode Neovim extension, Visual Studio, SSMS, etc.) |
+| `~/.config/` | Configs: Neovim, WezTerm, VSCode, VS, SSMS |
 | `~/installer/` | bootstrap.ps1, install.ps1, cleanup.ps1, lib/, packages/, fonts/ |
-| `~/installer/lib` | Shared helper functions (TUI, confirmations, spinners) |
+| `~/installer/lib/` | Shared helpers (tui.ps1) |
 | `~/dotfiles.ps1` | Sync helper: stage → commit → push |
-| `~/.dotfiles-repo` | Memory file: SSH URL of the active dotfiles remote |
+| `~/.dotfiles-repo` | Memory file: SSH URL of the active remote |
 
-**Always use the `dot` alias** for git operations — never run plain `git` in `$HOME`:
+## The `dot` Alias
+
+Always use `dot` for git ops in `$HOME` — never plain `git`:
 
 ```powershell
-# dot is defined in ~/.pwsh/profile.ps1
-function Invoke-Dot {
-    git --git-dir="$HOME/.dotfiles/" --work-tree="$HOME" @Args
-}
+function Invoke-Dot { git --git-dir="$HOME/.dotfiles/" --work-tree="$HOME" @Args }
 New-Alias dot Invoke-Dot
 ```
 
 ## Core Scripts
 
-### `dotfiles.ps1` — sync changes to the repo
-
-Stages all tracked paths, commits, and pushes to `origin main`.
-
-```powershell
-.\dotfiles.ps1                         # interactive prompt for commit message
-.\dotfiles.ps1 -Message "update hypr"  # skip prompt, use provided message
-.\dotfiles.ps1 -DryRun                 # preview without committing
-```
-
-When `-Message` is omitted, a `Read-Host` prompt opens. Leave it empty to fall back to `"sync dotfiles"`.
-
-To add a new file to tracking: add it to `$TrackedPaths` in `~/dotfiles.ps1`, then run `dotfiles.ps1`.
-
-### `installer/bootstrap.ps1` — new machine setup
-
-Full one-command setup on a fresh Windows machine:
-
-```powershell
-# Download and run directly:
-irm https://raw.githubusercontent.com/gin31259461/dotfiles-win/main/installer/bootstrap.ps1 | iex
-
-# Or from a local clone:
-.\installer\bootstrap.ps1
-.\installer\bootstrap.ps1 -Repo 'git@github.com:you/dotfiles-win.git'
-.\installer\bootstrap.ps1 -Yes   # non-interactive, accept all defaults
-```
-
-Flags:
-
-- `-Yes` — non-interactive, skip optional prompts
-- `-Repo <url>` — SSH URL of your fork (`user/repo` shorthand accepted)
-- `-DotfilesDir <path>` — custom bare repo location (default: `~/.dotfiles`)
-
-What it does: checks git → clones repo → robocopy deploys to `$HOME` → configures `dot` → inits submodules → optional `install.ps1`.
-
-**Repo selection (memory file `~/.dotfiles-repo`):**
-
-`bootstrap.ps1` writes `~/.dotfiles-repo` after every successful clone to remember which SSH remote URL this machine uses. The file is **tracked in the repo** so it is deployed to every new machine via robocopy.
-
-| Condition | Action |
-|---|---|
-| No `-Repo`, memory file present | SSH clone from that URL (HTTPS fallback if no key) |
-| `-Repo` differs from effective default | HTTPS clone of the default repo as base; set `-Repo` URL as `origin`; **bake fork URL into deployed `bootstrap.ps1`** so future machines need no flag |
-
-**Fork owner workflow:**
-
-1. First machine: `bootstrap.ps1 -Repo git@github.com:you/dotfiles-win.git`
-   → clones default, sets remote, bakes your URL into `bootstrap.ps1`, writes `~/.dotfiles-repo`
-2. Run `dotfiles.ps1` to commit and push (both `bootstrap.ps1` and `.dotfiles-repo` are tracked)
-3. All subsequent machines: run from your fork's URL — no `-Repo` needed
-
-### `installer/install.ps1` — interactive package installer
-
-Keyboard-navigable TUI installer for packages and features.
-
-```powershell
-.\installer\install.ps1              # interactive TUI
-.\installer\install.ps1 -Unattended  # install everything silently
-```
-
-TUI controls: `↑↓` navigate · `Space` toggle · `A` select all · `N` deselect · `Enter` install · `Q`/`Esc` quit.
-
-| Group | What it installs |
-|---|---|
-| Core | Scoop, PowerShell 7+, PSReadLine, Node.js + pnpm |
-| Scoop Packages | Each line in `packages/scoop.txt` |
-| Winget Packages | Each line in `packages/winget.txt` |
-| Setup | Fonts, profile symlink, WezTerm context menu, Win10 classic menu |
-
-To add a new installer item, add a `New-MenuItem` call inside `Get-MenuItems` in `install.ps1`.
-
-### `installer/cleanup.ps1` — interactive system cleanup
-
-Frees disk space: Scoop cache, Temp folder, npm cache, WinGet cache, Recycle Bin, thumbnail cache.
-
-```powershell
-.\installer\cleanup.ps1              # interactive TUI (keyboard menu, same controls as install.ps1)
-.\installer\cleanup.ps1 -Unattended  # skip confirmations, run all tasks
-```
-
-Each task shows reclaimable disk space (colour-coded) before anything is deleted.
-TUI controls: `↑↓` navigate · `Space` toggle · `A` select all · `N` deselect · `Enter` confirm · `Q`/`Esc` quit.
-
-| Key | Task |
-|---|---|
-| `scoop-cache` | Scoop download cache (`scoop cache rm *`) |
-| `temp-files` | `%TEMP%\*` — build artefacts, installers |
-| `npm-cache` | `npm cache clean --force` |
-| `winget-cache` | WinGet LocalCache + `%TEMP%\WinGet` |
-| `recycle-bin` | `Clear-RecycleBin -Force` |
-| `thumbnail-cache` | Explorer `thumbcache_*.db` — rebuilds on demand |
-
-## TUI Style Convention
-
-All scripts share the same visual language via **`~/installer/lib/tui.ps1`** —
-dot-source it at the top of any new script:
-
-```powershell
-. "$PSScriptRoot\lib\tui.ps1"              # from installer/ scripts
-. "$PSScriptRoot\installer\lib\tui.ps1"   # from dotfiles.ps1 at $HOME
-```
-
-### Print helpers
-
-No left padding — all output starts at column 0. `section` adds a blank line before and after the heading. `Invoke-Confirm` prints a blank line before the prompt for top margin.
-
-```powershell
-# Colour variables: $RED $GRN $YLW $BLU $DIM $BOLD $RST  (ANSI, enabled on load)
-
-die     "fatal message"       # "✗  message" — exits with code 1
-ok      "success message"     # "✔  message" — green
-warn    "warning message"     # "!  message" — yellow
-note    "dim message"         # dim text
-step    "in-progress message" # "›  message" — blue
-section "Heading"             # newline + "◆  Heading" (bold blue) + newline
-```
-
-### `Invoke-Confirm` — confirmation prompt
-
-```powershell
-if (Invoke-Confirm "Question?") { ... }   # "?  Question?  [y/N]"
-```
-
-Returns `$true` (y/yes) or `$false`. Scripts with a `-Yes`/`-Unattended` flag check it before calling:
-
-```powershell
-function confirm {
-    param([string]$Question)
-    if ($Yes) { return $true }
-    return Invoke-Confirm $Question
-}
-```
-
-### `Invoke-Spin` — loading indicator
-
-```powershell
-Invoke-Spin "Cloning repo..."    { git clone $url $dest }
-Invoke-Spin "Installing pkgs..." { scoop install $pkg }
-```
-
-Prints a `step` line then executes the scriptblock. Use for any operation that may take several seconds.
-
-### `Start-TuiMenu` — keyboard selection menu
-
-```powershell
-$result = Start-TuiMenu -Items $items `
-    -Title  'My Menu' `
-    -Footer '  ↑↓ Navigate   Space Toggle   A Select All   N Deselect   Enter Confirm   Q Quit'
-
-if ($null -eq $result) { exit 0 }           # user pressed Q / Esc
-$selected = $result | Where-Object Selected  # filter chosen items
-```
-
-Each item is a `PSCustomObject` with at minimum `Name` (string) and `Selected` (bool).
-Optional fields: `Description` (right-side detail), `Group` (section heading), `Hint` (short label, e.g. disk size), `HintColor` (ANSI colour string for the hint).
+**`dotfiles.ps1`** — sync tracked files: `.\dotfiles.ps1 [-Message "msg"] [-DryRun]`. Add files via `$TrackedPaths`.
+**`installer/bootstrap.ps1`** — new machine setup: `.\installer\bootstrap.ps1 [-Repo <url>] [-Yes]`. Flags: `-Yes` (non-interactive), `-Repo <url>`, `-DotfilesDir <path>`. Uses `~/.dotfiles-repo` to remember remote.
+**`installer/install.ps1`** — package installer: `.\installer\install.ps1 [-Unattended]`. Groups: Core, Scoop, Winget, Setup.
+**`installer/cleanup.ps1`** — system cleanup: `.\installer\cleanup.ps1 [-Unattended]`. Tasks: scoop-cache, temp-files, npm-cache, winget-cache, recycle-bin, thumbnail-cache.
+**TUI Convention**: All installer scripts use helpers from `installer/lib/tui.ps1`. See the **dotfiles-tui** skill.
 
 ## Git Operations
 
 ```powershell
-# Status / diff
-dot status
-dot diff
-
-# Stage a specific file
-dot add .config/nvim
-dot add .pwsh/profile.ps1
-
-# Commit manually
-dot commit -m "feat(nvim): update keymaps"
-
-# Push
-dot push origin main
-
-# Sync everything at once (runs dotfiles.ps1)
-.\dotfiles.ps1 -Message "your message"
-
-# Recent history
-dot log --oneline -10
+dot status / diff          # check state
+dot add <path>             # stage
+dot commit -m "type(scope): description"    # commit
+dot push origin main       # push
+.\dotfiles.ps1 -Message "..."   # all-in-one
 ```
-
-**Always use `dot`, never plain `git` in `$HOME`.**
 
 ## Submodules
 
-| Submodule | Local Path | Remote |
+| Submodule | Path | Remote |
 |---|---|---|
-| nvchad | `.config/nvim` | `git@github.com:gin31259461/nvchad.git` (main) |
-| wezterm | `.config/wezterm` | `git@github.com:gin31259461/wezterm.git` (main) |
+| nvchad | `.config/nvim` | `gin31259461/nvchad.git` (main) |
+| wezterm | `.config/wezterm` | `gin31259461/wezterm.git` (main) |
 
 ```powershell
-# Init after bootstrapping
-dot submodule update --init --recursive
-
-# Update submodules to their latest upstream commit
-dot submodule update --remote --merge
-
-# Sync .gitmodules changes
-dot submodule sync --recursive
+dot submodule update --init --recursive   # init
+dot submodule update --remote --merge      # update
+dot submodule sync --recursive             # sync
 ```
-
-**Do not `dot add` inside a submodule directory** — manage submodule content via their own repos.
 
 ## Package Lists
 
-`installer/packages/scoop.txt` — one Scoop package name per line.
-`installer/packages/winget.txt` — one winget package ID per line.
-Lines starting with `#` are ignored.
-
-To add a scoop package:
-
-1. `scoop install <package>`
-2. Add `<package>` to `~/installer/packages/scoop.txt`
-3. `.\dotfiles.ps1 -Message "chore: add <package> to scoop packages"`
-
-To add a winget package:
-
-1. `winget search <name>` to find the ID
-2. Add the ID to `~/installer/packages/winget.txt`
-3. `.\dotfiles.ps1 -Message "chore: add <package> to winget packages"`
-
----
+`installer/packages/scoop.txt` (one per line), `installer/packages/winget.txt` (one ID per line). `#` lines ignored. Add: install → add to `.txt` → `.\dotfiles.ps1 -Message "chore: add <pkg>"`.
 
 ## PowerShell Profile
 
-Source: `~/.pwsh/profile.ps1` — symlinked to `$profile` by `install.ps1`.
-
-Key aliases and functions:
-
-| Alias | Function | Purpose |
-|---|---|---|
-| `dot` | `Invoke-Dot` | Bare-repo git for dotfiles |
-| `v` | `nvim` | Neovim |
-| `k` | `kubectl` | Kubernetes |
-| `h` | `helm` | Helm |
-| `g` | `Invoke-Goto` | Quick directory navigation |
-| `kn` | `Set-KubeNamespace` | Switch kubectl namespace |
-
-`Invoke-Goto` shortcuts: `pr` → `~/projects`, `bp` → `~/projects/boilerplates`, `cs` → `~/projects/cheat-sheets`
-
-PSReadLine: history-based prediction, Vim-style `Ctrl+h`/`Ctrl+k` navigation.
-
-Starship: `$ENV:STARSHIP_CONFIG = "$HOME\.starship\starship.toml"`
-
----
+`~/.pwsh/profile.ps1` — symlinked to `$profile`. Key aliases: `dot` (bare-repo git), `v` (nvim), `k` (kubectl), `h` (helm), `g` (quick dir nav), `kn` (kubectl namespace). `g` shortcuts: `pr`→`~/projects`, `bp`→`~/projects/boilerplates`, `cs`→`~/projects/cheat-sheets`.
 
 ## File Encoding
 
-**All `.ps1` files must be saved as UTF-8 with BOM.** PowerShell 5.1 requires this to correctly parse non-ASCII characters (Unicode icons in TUI, box-drawing chars, etc.).
-
-When **creating** a `.ps1` file, always write it with BOM:
-
-```powershell
-$utf8bom = New-Object System.Text.UTF8Encoding $true
-[System.IO.File]::WriteAllText($path, $content, $utf8bom)
-```
-
-When **editing** an existing `.ps1` file, verify the encoding is preserved (the file should begin with the byte sequence `EF BB BF`):
-
-```powershell
-$bytes = [System.IO.File]::ReadAllBytes($path)
-if ($bytes[0] -ne 0xEF -or $bytes[1] -ne 0xBB -or $bytes[2] -ne 0xBF) {
-    Write-Warning "$path is missing UTF-8 BOM — re-save with BOM"
-}
-```
-
-After creating or editing any `.ps1` file, verify the BOM is present. If the editing tool does not preserve it, re-write the file with the `[System.IO.File]::WriteAllText` method above.
-
----
+All `.ps1` files **must** be UTF-8 with BOM (PowerShell 5.1 requirement). Create: `[System.IO.File]::WriteAllText($path, $content, [System.Text.UTF8Encoding]::new($true))`. Verify: check first 3 bytes are `EF BB BF`. Re-write with BOM if missing after editing.
 
 ## Commit Style
 
-Use **lowercase imperative** subject lines. No co-author trailers.
-
-```
-feat(nvim): update keymaps
-fix(profile): correct goto shortcut
-refactor: extract tui helpers to lib/tui.ps1
-docs: update README new-machine steps
-chore: add ripgrep to winget packages
-style: align installer menu columns
-```
-
-- **No co-authored-by trailers** — never append them
-- Use `dot commit` not `git commit` for dotfiles
-- **Always push after committing** — `dot push origin main`. Never leave commits unpushed at task end.
-- Prefer atomic commits (one logical change per commit)
-- Pass a descriptive `-Message` to `dotfiles.ps1` — avoid generic `"sync dotfiles"`
-
----
-
-## Review Before Completing
-
-Before marking any task done, work through every step below:
-
-1. **Re-read every file you changed** — check for leftover debug lines, wrong indentation, missed substitutions, or stale references.
-
-2. **Run syntax checks** — use the PowerShell AST parser (no script execution needed):
-
-   ```powershell
-   $errors = $null
-   [System.Management.Automation.Language.Parser]::ParseFile(
-       'C:\path\to\script.ps1', [ref]$null, [ref]$errors) | Out-Null
-   $errors   # empty = clean
-   ```
-
-   Run this for every `.ps1` file you created or modified.
-
-3. **Check for related bugs** — search all call sites of any function or variable you renamed/removed/changed. If `tui.ps1` helpers were touched, check every script that dot-sources it.
-
-4. **Verify UTF-8 BOM** — for every `.ps1` file created or edited:
-
-   ```powershell
-   $b = [System.IO.File]::ReadAllBytes('C:\path\to\file.ps1')
-   if ($b[0] -ne 0xEF -or $b[1] -ne 0xBB -or $b[2] -ne 0xBF) {
-       Write-Warning 'Missing UTF-8 BOM — re-save the file'
-   }
-   ```
-
-   If the BOM is missing, re-write with `[System.IO.File]::WriteAllText($path, $content, (New-Object System.Text.UTF8Encoding $true))`.
-
-5. **Verify consistency** — confirm that docs, instructions, and README still accurately describe the changed code. Check the "After Modifying Dotfiles" table below and update everything that applies.
-
-6. **Commit and push** — stage changed files, commit with a descriptive message, then push:
-
-   ```powershell
-   dot add <files...>
-   dot commit -m "type(scope): description"
-   dot push origin main
-   ```
-
-   Or use `.\dotfiles.ps1 -Message "..."` which does all three.
-   **Never leave a completed task without pushing to origin.**
-
-Only mark a task complete after all six steps pass.
-
----
-
-## After Modifying Dotfiles
-
-**Update `README.md` and/or `AGENTS.md` whenever you add, update, or remove any script, feature, or flag.** Never mark a task complete without syncing docs.
-
-| What changed | What to update |
-|---|---|
-| New script or feature added | `README.md` — add description to the relevant section |
-| Existing script or feature updated | `README.md` and/or `AGENTS.md` — reflect the change |
-| Script or feature removed | `README.md` and/or `AGENTS.md` — remove stale entries |
-| New flag or option added | `README.md` (usage table/examples) and script `.SYNOPSIS` |
-| New file added to dotfiles tracking | `dotfiles.ps1` — add to `$TrackedPaths` |
-| Dotfiles file removed from tracking | `dotfiles.ps1` — remove from `$TrackedPaths` |
-| TUI conventions changed | `AGENTS.md` — update TUI Style Convention section |
-| Guidelines or workflow changed | `AGENTS.md` — update the relevant section |
-| `AGENTS.md` itself edited | Re-read after editing to confirm accuracy |
-
-After updating any of the above, **commit and push all changes**:
-
-```powershell
-# Commit and push individual files manually:
-dot add <changed files...>
-dot commit -m "docs: ..."
-dot push origin main
-
-# Or use the sync helper (stages all tracked paths):
-.\dotfiles.ps1 -Message "docs: ..."
-```
-
-Both tracked dotfiles (`.github/`, `installer/`) and documentation changes must be committed in the same session — never leave them pending.
-
----
+Lowercase imperative, no co-author trailers, always push: `feat(nvim): update keymaps`, `fix(profile): correct goto shortcut`, `refactor: extract tui helpers`, `docs: update new-machine steps`, `chore: add ripgrep to winget`.
 
 ## PowerShell Guidelines
 
-Apply these conventions to all `.ps1` and `.psm1` files.
+See the **powershell-guidelines** skill for full coding conventions (naming, parameters, pipeline, error handling, documentation).
 
-### Naming
+## Review Checklist
 
-- **Verb-Noun format:** Use approved verbs (`Get-Verb`), singular PascalCase nouns, no special characters.
-- **Parameters:** PascalCase, clear descriptive names, singular form unless always multiple.
-- **Variables:** PascalCase for public, camelCase for private; avoid abbreviations.
-- **No aliases in scripts:** Use full cmdlet names (`Get-ChildItem` not `gci`). Aliases are acceptable for interactive shell use only.
+Before marking done:
 
-```powershell
-function Get-UserProfile {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]
-        [string]$Username,
+1. **Re-read every changed file** — no debug lines, wrong indentation, stale references
+2. **Run syntax checks** — AST parser on every `.ps1` touched: `[System.Management.Automation.Language.Parser]::ParseFile('path', [ref]$null, [ref]$errors) | Out-Null; $errors`
+3. **Check related bugs** — search all call sites of renamed/removed functions
+4. **Verify UTF-8 BOM** on every `.ps1` created or edited
+5. **Verify consistency** — check docs, README, and "After Modifying" table
+6. **Commit and push** — `dot add <files> && dot commit -m "type(scope): description" && dot push origin main` (or `.\dotfiles.ps1 -Message "..."`). Never leave unpushed.
 
-        [Parameter()]
-        [ValidateSet('Basic', 'Detailed')]
-        [string]$ProfileType = 'Basic'
-    )
+## After Modifying Dotfiles
 
-    process {
-        # Logic here
-    }
-}
-```
+Update docs whenever scripts, features, or flags change. Commit all changes before marking done.
 
-### Parameter Design
-
-- Use common parameter names (`Path`, `Name`, `Force`) and follow built-in cmdlet conventions.
-- Use `[switch]` for boolean flags — avoid `$true`/`$false` parameters.
-- Use `ValidateSet` for limited options; enable tab completion where possible.
-
-```powershell
-function Set-ResourceConfiguration {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]
-        [string]$Name,
-
-        [Parameter()]
-        [ValidateSet('Dev', 'Test', 'Prod')]
-        [string]$Environment = 'Dev',
-
-        [Parameter()]
-        [switch]$Force,
-
-        [Parameter()]
-        [ValidateNotNullOrEmpty()]
-        [string[]]$Tags
-    )
-
-    process {
-        # Logic here
-    }
-}
-```
-
-### Pipeline and Output
-
-- Use `ValueFromPipeline` / `ValueFromPipelineByPropertyName` for pipeline input.
-- Implement `Begin`/`Process`/`End` blocks for pipeline functions.
-- Return rich objects (`PSCustomObject`), not formatted text. Avoid `Write-Host` for data output.
-- Default to no output for action cmdlets; implement `-PassThru` to optionally return the object.
-
-```powershell
-function Update-ResourceStatus {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
-        [string]$Name,
-
-        [Parameter(Mandatory)]
-        [ValidateSet('Active', 'Inactive', 'Maintenance')]
-        [string]$Status,
-
-        [Parameter()]
-        [switch]$PassThru
-    )
-
-    begin {
-        Write-Verbose 'Starting resource status update process'
-        $timestamp = Get-Date
-    }
-
-    process {
-        Write-Verbose "Processing resource: $Name"
-        $resource = [PSCustomObject]@{
-            Name        = $Name
-            Status      = $Status
-            LastUpdated = $timestamp
-            UpdatedBy   = $env:USERNAME
-        }
-        if ($PassThru.IsPresent) { Write-Output $resource }
-    }
-
-    end {
-        Write-Verbose 'Resource status update process completed'
-    }
-}
-```
-
-### Error Handling
-
-- Use `[CmdletBinding(SupportsShouldProcess = $true)]` and set `ConfirmImpact` for destructive operations.
-- Use `try`/`catch` blocks; prefer `$PSCmdlet.WriteError()` over `Write-Error` and `$PSCmdlet.ThrowTerminatingError()` over `throw` in advanced functions.
-- Construct proper `ErrorRecord` objects with category, target, and exception details.
-- Use `Write-Verbose` for operational details, `Write-Warning` for warnings, `Write-Error` for non-terminating errors.
-- Avoid `Read-Host` in scripts — accept all input via parameters.
-
-```powershell
-function Remove-UserAccount {
-    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
-    param(
-        [Parameter(Mandatory, ValueFromPipeline)]
-        [ValidateNotNullOrEmpty()]
-        [string]$Username,
-
-        [Parameter()]
-        [switch]$Force
-    )
-
-    begin {
-        Write-Verbose 'Starting user account removal process'
-        $ErrorActionPreference = 'Stop'
-    }
-
-    process {
-        try {
-            if ($Force -or $PSCmdlet.ShouldProcess($Username, "Remove user account '$Username'")) {
-                Write-Verbose "Removing user account: $Username"
-                Remove-ADUser -Identity $Username -ErrorAction Stop
-            }
-        } catch {
-            $errorRecord = [System.Management.Automation.ErrorRecord]::new(
-                $_.Exception,
-                'UnexpectedError',
-                [System.Management.Automation.ErrorCategory]::NotSpecified,
-                $Username
-            )
-            $PSCmdlet.ThrowTerminatingError($errorRecord)
-        }
-    }
-
-    end {
-        Write-Verbose 'User account removal process completed'
-    }
-}
-```
-
-### Documentation and Style
-
-- Include comment-based help for all public-facing functions: `.SYNOPSIS`, `.DESCRIPTION`, `.PARAMETER`, `.EXAMPLE`, `.OUTPUTS`, `.NOTES`.
-- 4-space indentation; opening braces on the same line; closing braces on a new line.
-- Use full cmdlet names: `Where-Object` not `?`, `ForEach-Object` not `%`, `Get-ChildItem` not `ls`/`dir`.
-- Line breaks after pipeline operators for readability.
+| What changed | What to update |
+|---|---|
+| New/updated/removed script/feature | `README.md` and/or `AGENTS.md` |
+| New flag or option | `README.md` usage + script `.SYNOPSIS` |
+| New/removed tracked file | `dotfiles.ps1` `$TrackedPaths` |
+| TUI conventions changed | `AGENTS.md` + dotfiles-tui skill |
+| Guidelines/workflow changed | `AGENTS.md` |
+| `AGENTS.md` edited | Re-read after editing |
