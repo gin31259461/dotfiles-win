@@ -15,8 +15,8 @@ Resolves user input into one or more structured task entries and writes them to 
 
 ## When Not to Use
 
-- User only wants to read or query existing tasks (use `query_data_sources` instead)
-- User wants to update or complete an existing task (use `notion-update-page`)
+- User only wants to read or query existing tasks (use `notion_notion-search` instead)
+- User wants to update or complete an existing task (use `notion_notion-update-page`)
 
 ## Inputs
 
@@ -89,9 +89,9 @@ Always set `Status` = `"To Do"` unless the user says it's already in progress or
 
 ### Step 5a: Write content
 
-Use `append_block_children` to add task details to the page content.
+Use `notion_notion-update-page` with `insert_content` to add task details to the page content.
 
-If the task has clearly defined items that need to be completed, create `/todo` blocks
+If the task has clearly defined items that need to be completed, use Notion Markdown checkboxes (`- [ ]` / `- [x]`) in the content.
 
 ### Step 6: Confirm
 

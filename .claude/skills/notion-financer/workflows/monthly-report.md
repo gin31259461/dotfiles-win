@@ -53,42 +53,33 @@ notion_notion-update-page(
 
 ## Step 2 — Link All Month Transactions
 
-**Pass 1 — Initial Database Query (Fast Path):**
+Since `notion_notion-database-query` is not available, use a search-based approach:
 
-Instead of a full-text search, query the database directly using a date filter to ensure exact matches and avoid missing properties.
+**Pass 1 — Search:**
+Search the Transactions data source with the target month string as the query:
 
 ```
-notion_notion-database-query(
-    database_id = $transactionsDS,
-    filter = {
-        "property": "Date",
-        "date": {
-        "on_or_after": "YYYY-MM-01",
-        "before": "YYYY-MM+1-01" // e.g., if target is 2026-06, use 2026-07-01 here
-    }
-    },
-    page_size = 100
+notion_notion-search(
+  query = "YYYY-MM",
+  data_source_url = $transactionsDS,
+  page_size = 25
 )
 ```
 
-Collect all returned pages. If `has_more` is `false`, skip to the linking phase. If `has_more` is `true`, proceed to Pass 2.
+Collect all returned pages. For each candidate, use `notion_notion-fetch` to read the `Date` property and verify it falls within the target month. Keep only those that match.
 
-**Pass 2 — Handle Pagination Loop (Fallback/Completion):**
+**Pass 2 — Wider search (if few results):**
+If Pass 1 returned fewer than expected results, broaden the search with a general term:
 
-If the transaction count exceeds 100, the API will return `has_more: true` and a `next_cursor`. You MUST use this cursor to fetch the remaining data.
-
-Initialize a list with the results from Pass 1, then execute the following loop until `has_more` is `false`:
-
-notion_notion-database-query(
-database_id = $transactionsDS,
-filter = { /*Use the exact same date filter as Pass 1*/ },
-page_size = 100,
-start_cursor = "<next_cursor from the previous API response>"
+```
+notion_notion-search(
+  query = "<broad term like common item names>",
+  data_source_url = $transactionsDS,
+  page_size = 25
 )
+```
 
-1. Append the newly fetched pages to your main list.
-2. Update your current `next_cursor` with the one from the new response.
-3. If `has_more` is still `true`, repeat this step.
+Deduplicate against Pass 1 results, fetch to verify Date property, and collect matching pages.
 
 **Final Step — Link to Report:**
 
