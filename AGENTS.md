@@ -1,7 +1,5 @@
 ﻿# Windows Dotfiles
 
-Guidelines for AI agents working in this Windows bare-repo dotfiles setup.
-
 ## Repo Layout
 
 | Path | Purpose |
