@@ -30,9 +30,9 @@
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
-    [string] $Repo        = '',
-    [string] $DotfilesDir = "$HOME/.dotfiles",
-    [switch] $Yes
+  [string] $Repo        = '',
+  [string] $DotfilesDir = "$HOME/.dotfiles",
+  [switch] $Yes
 )
 
 Set-StrictMode -Version Latest
@@ -41,48 +41,72 @@ Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force -ErrorAction Silently
 
 # Dot-source tui.ps1 when running from a local clone; define inline fallbacks for
 # the irm <url> | iex path where $PSScriptRoot is empty and no files are present yet.
-$_tuiPath = if ($PSScriptRoot) { Join-Path $PSScriptRoot 'lib\tui.ps1' } else { $null }
-if ($_tuiPath -and (Test-Path $_tuiPath)) {
-    . $_tuiPath
-} else {
-    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-    try {
-        if (-not ('TuiHelper.TuiVtHelper' -as [type])) {
-            $sig = '
+$_tuiPath = if ($PSScriptRoot)
+{ Join-Path $PSScriptRoot 'lib\tui.ps1' 
+} else
+{ $null 
+}
+if ($_tuiPath -and (Test-Path $_tuiPath))
+{
+  . $_tuiPath
+} else
+{
+  [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+  try
+  {
+    if (-not ('TuiHelper.TuiVtHelper' -as [type]))
+    {
+      $sig = '
                 [DllImport("kernel32.dll")] public static extern IntPtr GetStdHandle(int n);
                 [DllImport("kernel32.dll")] public static extern bool GetConsoleMode(IntPtr h, out uint m);
                 [DllImport("kernel32.dll")] public static extern bool SetConsoleMode(IntPtr h, uint m);
             '
-            Add-Type -Name 'TuiVtHelper' -Namespace 'TuiHelper' -MemberDefinition $sig -ErrorAction Stop | Out-Null
-        }
-        $h = [TuiHelper.TuiVtHelper]::GetStdHandle(-11)
-        $m = 0u
-        [TuiHelper.TuiVtHelper]::GetConsoleMode($h, [ref]$m) | Out-Null
-        [TuiHelper.TuiVtHelper]::SetConsoleMode($h, $m -bor 4) | Out-Null
-    } catch { }
-
-    $ESC  = [char]27
-    $RED  = "${ESC}[31m"; $GRN  = "${ESC}[32m"; $YLW = "${ESC}[33m"; $BLU = "${ESC}[34m"
-    $DIM  = "${ESC}[2m";  $BOLD = "${ESC}[1m";  $RST = "${ESC}[0m"
-
-    function die     { param([string]$Message) [Console]::Error.WriteLine("`n${RED}✗${RST}  ${Message}`n"); exit 1 }
-    function ok      { param([string]$Message) Write-Host "${GRN}✔${RST}  ${Message}" }
-    function warn    { param([string]$Message) Write-Host "${YLW}!${RST}  ${Message}" }
-    function note    { param([string]$Message) Write-Host "${DIM}${Message}${RST}" }
-    function step    { param([string]$Message) Write-Host "${BLU}›${RST}  ${Message}" }
-    function section { param([string]$Title)   Write-Host ""; Write-Host "${BOLD}${BLU}◆${RST}  ${BOLD}${Title}${RST}"; Write-Host "" }
-    function Invoke-Confirm {
-        param([string]$Question)
-        Write-Host ""
-        Write-Host "${BLU}?${RST}  ${Question}  ${DIM}[y/N]${RST} " -NoNewline
-        $answer = Read-Host
-        return ($answer -match '^[Yy](es)?$')
+      Add-Type -Name 'TuiVtHelper' -Namespace 'TuiHelper' -MemberDefinition $sig -ErrorAction Stop | Out-Null
     }
-    function Invoke-Spin {
-        param([string]$Title, [scriptblock]$Command)
-        step $Title
-        & $Command
-    }
+    $h = [TuiHelper.TuiVtHelper]::GetStdHandle(-11)
+    $m = 0u
+    [TuiHelper.TuiVtHelper]::GetConsoleMode($h, [ref]$m) | Out-Null
+    [TuiHelper.TuiVtHelper]::SetConsoleMode($h, $m -bor 4) | Out-Null
+  } catch
+  { 
+  }
+
+  $ESC  = [char]27
+  $RED  = "${ESC}[31m"; $GRN  = "${ESC}[32m"; $YLW = "${ESC}[33m"; $BLU = "${ESC}[34m"
+  $DIM  = "${ESC}[2m";  $BOLD = "${ESC}[1m";  $RST = "${ESC}[0m"
+
+  function die
+  { param([string]$Message) [Console]::Error.WriteLine("`n${RED}✗${RST}  ${Message}`n"); exit 1 
+  }
+  function ok
+  { param([string]$Message) Write-Host "${GRN}✔${RST}  ${Message}" 
+  }
+  function warn
+  { param([string]$Message) Write-Host "${YLW}!${RST}  ${Message}" 
+  }
+  function note
+  { param([string]$Message) Write-Host "${DIM}${Message}${RST}" 
+  }
+  function step
+  { param([string]$Message) Write-Host "${BLU}›${RST}  ${Message}" 
+  }
+  function section
+  { param([string]$Title)   Write-Host ""; Write-Host "${BOLD}${BLU}◆${RST}  ${BOLD}${Title}${RST}"; Write-Host "" 
+  }
+  function Invoke-Confirm
+  {
+    param([string]$Question)
+    Write-Host ""
+    Write-Host "${BLU}?${RST}  ${Question}  ${DIM}[y/N]${RST} " -NoNewline
+    $answer = Read-Host
+    return ($answer -match '^[Yy](es)?$')
+  }
+  function Invoke-Spin
+  {
+    param([string]$Title, [scriptblock]$Command)
+    step $Title
+    & $Command
+  }
 }
 
 # ── Defaults (overridden by memory file at runtime) ───────────────────────────
@@ -93,58 +117,72 @@ $DotfilesRepoFile = "$HOME/.dotfiles-repo"
 $RepoSsh   = $DefaultRepoSsh
 $RepoHttps = $DefaultRepoHttps
 
-function Invoke-Dot {
-    git --git-dir=$DotfilesDir --work-tree=$HOME @Args
+function Invoke-Dot
+{
+  git --git-dir=$DotfilesDir --work-tree=$HOME @Args
 }
 
 # ── Load memory file ──────────────────────────────────────────────────────────
 # ~/.dotfiles-repo (if present) overrides the hardcoded defaults so a fork
 # owner's bootstrap.ps1 auto-targets the right repo on any new machine.
-if (Test-Path $DotfilesRepoFile) {
-    $mem = [System.IO.File]::ReadAllText($DotfilesRepoFile).Trim()
-    if ($mem) {
-        $DefaultRepoSsh = $mem
-        if ($mem -match '^git@github\.com:(.+?)(?:\.git)?$') {
-            $DefaultRepoHttps = "https://github.com/$($Matches[1]).git"
-        } else {
-            $DefaultRepoHttps = ''
-        }
-        $RepoSsh   = $DefaultRepoSsh
-        $RepoHttps = $DefaultRepoHttps
+if (Test-Path $DotfilesRepoFile)
+{
+  $mem = [System.IO.File]::ReadAllText($DotfilesRepoFile).Trim()
+  if ($mem)
+  {
+    $DefaultRepoSsh = $mem
+    if ($mem -match '^git@github\.com:(.+?)(?:\.git)?$')
+    {
+      $DefaultRepoHttps = "https://github.com/$($Matches[1]).git"
+    } else
+    {
+      $DefaultRepoHttps = ''
     }
+    $RepoSsh   = $DefaultRepoSsh
+    $RepoHttps = $DefaultRepoHttps
+  }
 }
 
 # ── URL resolution helpers ────────────────────────────────────────────────────
 
-function Resolve-RepoUrls {
-    param([string]$Input)
-    if ($Input -match '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') {
-        $slug = $Input -replace '\.git$', ''
-        $script:RepoSsh   = "git@github.com:${slug}.git"
-        $script:RepoHttps = "https://github.com/${slug}.git"
-    } elseif ($Input -match '^git@github\.com:(.+?)(?:\.git)?$') {
-        $slug = $Matches[1]
-        $script:RepoSsh   = "git@github.com:${slug}.git"
-        $script:RepoHttps = "https://github.com/${slug}.git"
-    } elseif ($Input -match '^git@') {
-        $script:RepoSsh   = $Input
-        $script:RepoHttps = ''
-    } else {
-        die "Unrecognised repo format: '$Input'`nUse: user/repo  or  git@github.com:user/repo.git"
-    }
+function Resolve-RepoUrls
+{
+  param([string]$Input)
+  if ($Input -match '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')
+  {
+    $slug = $Input -replace '\.git$', ''
+    $script:RepoSsh   = "git@github.com:${slug}.git"
+    $script:RepoHttps = "https://github.com/${slug}.git"
+  } elseif ($Input -match '^git@github\.com:(.+?)(?:\.git)?$')
+  {
+    $slug = $Matches[1]
+    $script:RepoSsh   = "git@github.com:${slug}.git"
+    $script:RepoHttps = "https://github.com/${slug}.git"
+  } elseif ($Input -match '^git@')
+  {
+    $script:RepoSsh   = $Input
+    $script:RepoHttps = ''
+  } else
+  {
+    die "Unrecognised repo format: '$Input'`nUse: user/repo  or  git@github.com:user/repo.git"
+  }
 }
 
-function Read-RepoUrl {
-    Write-Host ""
-    Write-Host "${BLU}?${RST}  Your dotfiles SSH URL  ${DIM}(e.g. git@github.com:you/dotfiles-win.git  or  you/dotfiles-win)${RST}"
-    Write-Host "  " -NoNewline
-    return Read-Host
+function Read-RepoUrl
+{
+  Write-Host ""
+  Write-Host "${BLU}?${RST}  Your dotfiles SSH URL  ${DIM}(e.g. git@github.com:you/dotfiles-win.git  or  you/dotfiles-win)${RST}"
+  Write-Host "  " -NoNewline
+  return Read-Host
 }
 
-function confirm {
-    param([string]$Question)
-    if ($Yes) { return $true }
-    return Invoke-Confirm $Question
+function confirm
+{
+  param([string]$Question)
+  if ($Yes)
+  { return $true 
+  }
+  return Invoke-Confirm $Question
 }
 
 # ── Banner ────────────────────────────────────────────────────────────────────
@@ -157,8 +195,9 @@ Write-Host "  ${DIM}$('─' * 44)${RST}"
 
 section "Prerequisites"
 
-if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-    die "git not found.`nInstall from https://git-scm.com or: winget install Git.Git"
+if (-not (Get-Command git -ErrorAction SilentlyContinue))
+{
+  die "git not found.`nInstall from https://git-scm.com or: winget install Git.Git"
 }
 ok "git $(git --version)"
 
@@ -166,104 +205,147 @@ ok "git $(git --version)"
 
 section "Dotfiles repository"
 
-if (Test-Path $DotfilesDir) {
-    ok "Bare repo already present at $DotfilesDir — skipping clone"
-    # Ensure memory file exists even when repo was cloned manually
-    if (-not (Test-Path $DotfilesRepoFile)) {
-        try {
-            $currentRemote = & git --git-dir=$DotfilesDir remote get-url origin 2>$null
-            if ($currentRemote) {
-                [System.IO.File]::WriteAllText($DotfilesRepoFile, $currentRemote.Trim())
-                note "Saved existing remote to $DotfilesRepoFile"
-            }
-        } catch { }
+if (Test-Path $DotfilesDir)
+{
+  ok "Bare repo already present at $DotfilesDir — skipping clone"
+  # Ensure memory file exists even when repo was cloned manually
+  if (-not (Test-Path $DotfilesRepoFile))
+  {
+    try
+    {
+      $currentRemote = & git --git-dir=$DotfilesDir remote get-url origin 2>$null
+      if ($currentRemote)
+      {
+        [System.IO.File]::WriteAllText($DotfilesRepoFile, $currentRemote.Trim())
+        note "Saved existing remote to $DotfilesRepoFile"
+      }
+    } catch
+    { 
     }
-} else {
-    # Determine effective SSH URL: flag > interactive > stored > default
-    $storedSsh = if (Test-Path $DotfilesRepoFile) {
-        [System.IO.File]::ReadAllText($DotfilesRepoFile).Trim()
-    } else { '' }
+  }
+} else
+{
+  # Determine effective SSH URL: flag > interactive > stored > default
+  $storedSsh = if (Test-Path $DotfilesRepoFile)
+  {
+    [System.IO.File]::ReadAllText($DotfilesRepoFile).Trim()
+  } else
+  { '' 
+  }
 
-    if ($Repo) {
-        Resolve-RepoUrls $Repo
-    } elseif (-not $Yes) {
-        $label = if ($storedSsh) { $storedSsh } else { "$DefaultRepoSsh (default)" }
-        if (-not (Invoke-Confirm "Use dotfiles repo: ${label}?")) {
-            $customRepo = Read-RepoUrl
-            if (-not $customRepo) { die "No repository provided." }
-            Resolve-RepoUrls $customRepo
-        } elseif ($storedSsh) {
-            Resolve-RepoUrls $storedSsh
+  if ($Repo)
+  {
+    Resolve-RepoUrls $Repo
+  } elseif (-not $Yes)
+  {
+    $label = if ($storedSsh)
+    { $storedSsh 
+    } else
+    { "$DefaultRepoSsh (default)" 
+    }
+    if (-not (Invoke-Confirm "Use dotfiles repo: ${label}?"))
+    {
+      $customRepo = Read-RepoUrl
+      if (-not $customRepo)
+      { die "No repository provided." 
+      }
+      Resolve-RepoUrls $customRepo
+    } elseif ($storedSsh)
+    {
+      Resolve-RepoUrls $storedSsh
+    }
+  } elseif ($storedSsh)
+  {
+    Resolve-RepoUrls $storedSsh
+  }
+
+  note "Repo SSH:   $RepoSsh"
+  note "Repo HTTPS: $RepoHttps"
+
+  # New remote = user's SSH URL differs from the stored/default
+  $newSshRemote = ($RepoSsh -and ($RepoSsh -ne $storedSsh) -and ($RepoSsh -ne $DefaultRepoSsh))
+
+  # Choose clone URL
+  $cloneUrl = if ($newSshRemote)
+  {
+    note "New SSH remote detected — cloning default as base"
+    $DefaultRepoHttps
+  } elseif ($RepoSsh -match '^git@github\.com:')
+  {
+    # Test SSH connectivity (exit 1 = authenticated, no shell access = OK)
+    $null = & ssh -T git@github.com -o BatchMode=yes -o ConnectTimeout=5 2>&1
+    if ($LASTEXITCODE -eq 1)
+    { $RepoSsh 
+    } else
+    {
+      warn "No SSH access to GitHub — using HTTPS"
+      $RepoHttps
+    }
+  } else
+  {
+    if ($RepoSsh)
+    { $RepoSsh 
+    } else
+    { $RepoHttps 
+    }
+  }
+
+  if (-not $cloneUrl)
+  { die "No valid repository URL resolved." 
+  }
+
+  $tmpDir = Join-Path $env:TEMP 'dotfiles-bootstrap'
+  if (Test-Path $tmpDir)
+  { Remove-Item $tmpDir -Recurse -Force 
+  }
+
+  Invoke-Spin "Cloning $cloneUrl..." {
+    & git clone --separate-git-dir=$DotfilesDir $cloneUrl $tmpDir
+    if ($LASTEXITCODE -ne 0)
+    { die "Clone failed — check URL and network." 
+    }
+  }
+
+  section "Deploying to HOME"
+  Invoke-Spin "Copying files to $HOME..." {
+    & robocopy $tmpDir $HOME /E /XD .git | Out-Null
+  }
+  Remove-Item $tmpDir -Recurse -Force
+  ok "Files deployed to $HOME"
+
+  # Wire SSH remote and save memory file
+  if ($newSshRemote)
+  {
+    Invoke-Dot remote set-url origin $RepoSsh
+    ok "Remote origin → $RepoSsh"
+
+    # Bake the fork's URL into the deployed bootstrap.ps1 so future
+    # machines bootstrapped from this fork need no -Repo flag.
+    $bs = "$HOME\installer\bootstrap.ps1"
+    if (Test-Path $bs)
+    {
+      $lines = Get-Content $bs
+      for ($i = 0; $i -lt $lines.Count; $i++)
+      {
+        if ($lines[$i] -match '^\$DefaultRepoSsh\s*=')
+        {
+          $lines[$i] = "`$DefaultRepoSsh   = '$RepoSsh'"
+        } elseif ($lines[$i] -match '^\$DefaultRepoHttps\s*=' -and $RepoHttps)
+        {
+          $lines[$i] = "`$DefaultRepoHttps = '$RepoHttps'"
         }
-    } elseif ($storedSsh) {
-        Resolve-RepoUrls $storedSsh
+      }
+      $utf8bom = New-Object System.Text.UTF8Encoding $true
+      [System.IO.File]::WriteAllLines($bs, $lines, $utf8bom)
+      ok "Baked fork URL into bootstrap.ps1"
     }
+  }
 
-    note "Repo SSH:   $RepoSsh"
-    note "Repo HTTPS: $RepoHttps"
-
-    # New remote = user's SSH URL differs from the stored/default
-    $newSshRemote = ($RepoSsh -and ($RepoSsh -ne $storedSsh) -and ($RepoSsh -ne $DefaultRepoSsh))
-
-    # Choose clone URL
-    $cloneUrl = if ($newSshRemote) {
-        note "New SSH remote detected — cloning default as base"
-        $DefaultRepoHttps
-    } elseif ($RepoSsh -match '^git@github\.com:') {
-        # Test SSH connectivity (exit 1 = authenticated, no shell access = OK)
-        $null = & ssh -T git@github.com -o BatchMode=yes -o ConnectTimeout=5 2>&1
-        if ($LASTEXITCODE -eq 1) { $RepoSsh } else {
-            warn "No SSH access to GitHub — using HTTPS"
-            $RepoHttps
-        }
-    } else {
-        if ($RepoSsh) { $RepoSsh } else { $RepoHttps }
-    }
-
-    if (-not $cloneUrl) { die "No valid repository URL resolved." }
-
-    $tmpDir = Join-Path $env:TEMP 'dotfiles-bootstrap'
-    if (Test-Path $tmpDir) { Remove-Item $tmpDir -Recurse -Force }
-
-    Invoke-Spin "Cloning $cloneUrl..." {
-        & git clone --separate-git-dir=$DotfilesDir $cloneUrl $tmpDir
-        if ($LASTEXITCODE -ne 0) { die "Clone failed — check URL and network." }
-    }
-
-    section "Deploying to HOME"
-    Invoke-Spin "Copying files to $HOME..." {
-        & robocopy $tmpDir $HOME /E /XD .git | Out-Null
-    }
-    Remove-Item $tmpDir -Recurse -Force
-    ok "Files deployed to $HOME"
-
-    # Wire SSH remote and save memory file
-    if ($newSshRemote) {
-        Invoke-Dot remote set-url origin $RepoSsh
-        ok "Remote origin → $RepoSsh"
-
-        # Bake the fork's URL into the deployed bootstrap.ps1 so future
-        # machines bootstrapped from this fork need no -Repo flag.
-        $bs = "$HOME\installer\bootstrap.ps1"
-        if (Test-Path $bs) {
-            $lines = Get-Content $bs
-            for ($i = 0; $i -lt $lines.Count; $i++) {
-                if ($lines[$i] -match '^\$DefaultRepoSsh\s*=') {
-                    $lines[$i] = "`$DefaultRepoSsh   = '$RepoSsh'"
-                } elseif ($lines[$i] -match '^\$DefaultRepoHttps\s*=' -and $RepoHttps) {
-                    $lines[$i] = "`$DefaultRepoHttps = '$RepoHttps'"
-                }
-            }
-            $utf8bom = New-Object System.Text.UTF8Encoding $true
-            [System.IO.File]::WriteAllLines($bs, $lines, $utf8bom)
-            ok "Baked fork URL into bootstrap.ps1"
-        }
-    }
-
-    if ($RepoSsh) {
-        [System.IO.File]::WriteAllText($DotfilesRepoFile, $RepoSsh)
-        note "Saved SSH URL to $DotfilesRepoFile"
-    }
+  if ($RepoSsh)
+  {
+    [System.IO.File]::WriteAllText($DotfilesRepoFile, $RepoSsh)
+    note "Saved SSH URL to $DotfilesRepoFile"
+  }
 }
 
 # ── Configure ─────────────────────────────────────────────────────────────────
@@ -282,13 +364,20 @@ ok "Submodules ready"
 
 section "Install packages"
 $installScript = "$HOME\installer\install.ps1"
-if ((Test-Path $installScript) -and (confirm "Run install.ps1 now?")) {
-    & $installScript
-} elseif (-not (Test-Path $installScript)) {
-    note "install.ps1 not found — skipping"
-} else {
-    note "Run .\installer\install.ps1 later to install packages and features"
+if ((Test-Path $installScript) -and (confirm "Run install.ps1 now?"))
+{
+  & $installScript
+} elseif (-not (Test-Path $installScript))
+{
+  note "install.ps1 not found — skipping"
+} else
+{
+  note "Run .\installer\install.ps1 later to install packages and features"
 }
+
+# ── Link powershell profile ──────────────────────────────────────────────────────────
+
+New-Item -ItemType SymbolicLink -Path "$HOME/Documents/WindowsPowerShell/Microsoft.PowerShell_profile.ps1" -Target "$HOME/.pwsh/profile.ps1" -Force
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 

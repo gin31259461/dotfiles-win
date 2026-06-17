@@ -1,16 +1,23 @@
 ﻿# Windows Dotfiles
 
-Bare git repo, working tree is `$HOME`, bare repo at `~/.dotfiles/`.
+Bare git repo, used for managing dotfiles in $HOME with a separate git directory at ~/.dotfiles/.
 
 ```bash
-alias dot='git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
+New-Alias -Name dot -Value Invoke-Dot -ErrorAction SilentlyContinue
+
+function Invoke-Dot {
+    <#
+    .SYNOPSIS
+        Manage dotfiles via a bare git repository at ~/.dotfiles.
+    .EXAMPLE
+        dot status
+        dot add .config/nvim
+        dot commit -m "update nvim"
+        dot push origin main
+    #>
+    git --git-dir="$HOME/.dotfiles/" --work-tree="$HOME" @Args
+}
 ```
-
-## Rules
-
-- Use `dot` instead of `git` in `$HOME`
-- `dot status` hides untracked files by design
-- Commit always without co-author trailers
 
 ## Scripts
 
@@ -20,41 +27,46 @@ alias dot='git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 
 ## Package Lists
 
-- `installer/packages/scoop.txt` (one per line)
-- `installer/packages/winget.txt` (one ID per line)
+- installer/packages/scoop.txt (one per line)
+- installer/packages/winget.txt (one ID per line)
 - `#` lines ignored
 
 ## File Encoding
 
-All `.ps1` files **must** be UTF-8 with BOM (PowerShell 5.1 requirement). Create: `[System.IO.File]::WriteAllText($path, $content, [System.Text.UTF8Encoding]::new($true))`. Verify: check first 3 bytes are `EF BB BF`. Re-write with BOM if missing after editing.
+All .ps1 files must be UTF-8 with BOM (PowerShell 5.1 requirement). Create: `[System.IO.File]::WriteAllText($path, $content, [System.Text.UTF8Encoding]::new($true))`.
 
-## Commit Convention
+Verify: check first 3 bytes are `EF BB BF`.
 
-Structure: Header, optional Body, optional Footer.
+Re-write with BOM if missing after editing.
 
-```plain
-<type>(<scope>): <subject>
+## Commit Rules
 
-<body>
+- Structure: header, body (optional), footer (optional).
 
-<footer>
-```
+    ```plain
+    type(scope): subject -> header
 
-Rules:
+    - content -> body
+    - content
+    - content
 
-- Header is brief, 50 chars or less, imperative mood, no period at end
-- Body 72 chars wrapped, optional
-- Footer for co-authors, references, etc., optional (this project not allow co-authors trailers)
+    footer
+    ```
 
-Types:
+- Rules:
+  - header is brief, 50 chars or less, imperative mood, no period at end
+  - body 72 chars wrapped, optional
+  - footer for co-authors, references, etc., optional (this project not allow co-authors trailers)
+  - do not add any co-authors trailers
 
-- feat: new feature
-- fix: bug fix
-- docs: documentation only changes
-- style: code formatting, no logic changes
-- refactor: code refactoring
-- perf: performance improvement
-- test: test changes
-- build: build system changes
-- ci: CI configuration changes
-- chore: other changes
+- Types:
+  - feat: new feature
+  - fix: bug fix
+  - docs: documentation only changes
+  - style: code formatting, no logic changes
+  - refactor: code refactoring
+  - perf: performance improvement
+  - test: test changes
+  - build: build system changes
+  - ci: CI configuration changes
+  - chore: other changes

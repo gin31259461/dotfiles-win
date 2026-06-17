@@ -28,18 +28,15 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-. "$PSScriptRoot\installer\lib\tui.ps1"
+. "$PSScriptRoot\lib\tui.ps1"
 
 # ── Tracked paths ─────────────────────────────────────────────────────────────
 $TrackedPaths = @(
-  'README.md'
   '.dotfiles-repo'
   '.gitmodules'
   '.gitignore'
   '.gitattributes'
   '.gitconfig'
-  'dotfiles.ps1'
-  'installer'
   '.config/wezterm'
   '.config/visual-studio'
   '.config/vscode-nvim'
@@ -49,14 +46,10 @@ $TrackedPaths = @(
   '.pwsh'
   '.starship'
   '.vimrc'
-  '.claude/skills'
+  'installer'
   'AGENTS.md'
+  'README.md'
 )
-
-function Invoke-Dot
-{
-  git --git-dir="$HOME/.dotfiles/" --work-tree="$HOME" @Args
-}
 
 Set-Location $HOME
 

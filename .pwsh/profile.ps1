@@ -9,10 +9,15 @@ New-Alias -Name kn  -Value Set-KubeNamespace -ErrorAction SilentlyContinue
 Remove-Item Alias:h -ErrorAction SilentlyContinue
 New-Alias -Name h -Value helm -ErrorAction SilentlyContinue
 
+# ─── Environment ───────────────────────────────────────────────────────────────
+
+[Environment]::SetEnvironmentVariable("Path", $env:Path + "$HOME\installer", "User")
+
 # ─── Functions ───────────────────────────────────────────────────────────────
 
-function Invoke-Dot {
-    <#
+function Invoke-Dot
+{
+  <#
     .SYNOPSIS
         Manage dotfiles via a bare git repository at ~/.dotfiles.
     .EXAMPLE
@@ -21,11 +26,12 @@ function Invoke-Dot {
         dot commit -m "update nvim"
         dot push origin main
     #>
-    git --git-dir="$HOME/.dotfiles/" --work-tree="$HOME" @Args
+  git --git-dir="$HOME/.dotfiles/" --work-tree="$HOME" @Args
 }
 
-function Invoke-Goto {
-    <#
+function Invoke-Goto
+{
+  <#
     .SYNOPSIS
         Quick navigation to named project directories.
     .EXAMPLE
@@ -33,26 +39,29 @@ function Invoke-Goto {
         g bp   # ~/projects/boilerplates
         g cs   # ~/projects/cheat-sheets
     #>
-    param(
-        [Parameter(Mandatory)]
-        [string] $Location
-    )
+  param(
+    [Parameter(Mandatory)]
+    [string] $Location
+  )
 
-    $locations = @{
-        'pr' = "$HOME/projects"
-        'bp' = "$HOME/projects/boilerplates"
-        'cs' = "$HOME/projects/cheat-sheets"
-    }
+  $locations = @{
+    'pr' = "$HOME/projects"
+    'bp' = "$HOME/projects/boilerplates"
+    'cs' = "$HOME/projects/cheat-sheets"
+  }
 
-    if ($locations.ContainsKey($Location)) {
-        Set-Location -Path $locations[$Location]
-    } else {
-        Write-Warning "Unknown location '$Location'. Available: $($locations.Keys -join ', ')"
-    }
+  if ($locations.ContainsKey($Location))
+  {
+    Set-Location -Path $locations[$Location]
+  } else
+  {
+    Write-Warning "Unknown location '$Location'. Available: $($locations.Keys -join ', ')"
+  }
 }
 
-function Set-KubeNamespace {
-    <#
+function Set-KubeNamespace
+{
+  <#
     .SYNOPSIS
         Switch the active kubectl namespace for the current context.
     .EXAMPLE
@@ -60,31 +69,37 @@ function Set-KubeNamespace {
         kn d        # shorthand for default
         kn staging
     #>
-    param(
-        [Parameter(Mandatory)]
-        [string] $Namespace
-    )
+  param(
+    [Parameter(Mandatory)]
+    [string] $Namespace
+  )
 
-    $resolved = if ($Namespace -in 'default', 'd') { 'default' } else { $Namespace }
-    kubectl config set-context --current --namespace=$resolved
+  $resolved = if ($Namespace -in 'default', 'd')
+  { 'default' 
+  } else
+  { $Namespace 
+  }
+  kubectl config set-context --current --namespace=$resolved
 }
 
 # ─── PSReadLine ───────────────────────────────────────────────────────────────
 
 Import-Module PSReadLine -ErrorAction SilentlyContinue
 
-try {
-    Set-PSReadLineOption -PredictionSource History -ErrorAction Stop
-    Set-PSReadLineOption -HistorySearchCursorMovesToEnd
-    Set-PSReadLineKeyHandler -Chord UpArrow   -Function HistorySearchBackward
-    Set-PSReadLineKeyHandler -Chord DownArrow -Function HistorySearchForward
-    Set-PSReadLineKeyHandler -Chord Ctrl+p    -Function HistorySearchBackward
-    Set-PSReadLineKeyHandler -Chord Ctrl+n    -Function HistorySearchForward
-    Set-PSReadLineKeyHandler -Chord Ctrl+h    -Function BackwardChar
-    Set-PSReadLineKeyHandler -Chord Ctrl+k    -Function ForwardChar
-    Set-PSReadLineOption -Colors @{ InlinePrediction = '#875f5f' }
-} catch {
-    Set-PSReadLineOption -PredictionSource None
+try
+{
+  Set-PSReadLineOption -PredictionSource History -ErrorAction Stop
+  Set-PSReadLineOption -HistorySearchCursorMovesToEnd
+  Set-PSReadLineKeyHandler -Chord UpArrow   -Function HistorySearchBackward
+  Set-PSReadLineKeyHandler -Chord DownArrow -Function HistorySearchForward
+  Set-PSReadLineKeyHandler -Chord Ctrl+p    -Function HistorySearchBackward
+  Set-PSReadLineKeyHandler -Chord Ctrl+n    -Function HistorySearchForward
+  Set-PSReadLineKeyHandler -Chord Ctrl+h    -Function BackwardChar
+  Set-PSReadLineKeyHandler -Chord Ctrl+k    -Function ForwardChar
+  Set-PSReadLineOption -Colors @{ InlinePrediction = '#875f5f' }
+} catch
+{
+  Set-PSReadLineOption -PredictionSource None
 }
 
 # ─── Starship ────────────────────────────────────────────────────────────────
