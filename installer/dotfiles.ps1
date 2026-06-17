@@ -46,6 +46,7 @@ $TrackedPaths = @(
   '.pwsh'
   '.starship'
   '.vimrc'
+  '.agents'
   'installer'
   'AGENTS.md'
   'README.md'
