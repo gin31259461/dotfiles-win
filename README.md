@@ -1,42 +1,37 @@
 # Windows Dotfiles
 
-Personal Windows development environment managed with a **bare git repository**,
-so config files live at their real locations under `$HOME` without any symlinks.
+Personal Windows dotfiles managed with a bare Git repository at
+`~/.dotfiles`. Files stay in their normal locations under `$HOME`, while Git
+metadata stays outside the working tree.
 
-## Structure
+## Layout
 
-```
+```text
 ~/
 ├── .config/
-│   ├── nvim/               # Neovim config (git submodule)
-│   ├── wezterm/            # WezTerm terminal config (git submodule)
-│   ├── vscode-nvim/        # VSCode Neovim extension keybindings
-│   ├── visual-studio/      # Visual Studio exported settings
-│   └── ssms/               # SQL Server Management Studio settings
-├── .pwsh/
-│   └── profile.ps1         # PowerShell profile
-├── .starship/
-│   └── starship.toml       # Starship prompt config
-├── .vimrc                  # Vim config
-├── .dotfiles-repo          # Memory file: SSH URL of your dotfiles remote
+│   ├── nvim/             # Neovim config, submodule
+│   ├── wezterm/          # WezTerm config, submodule
+│   ├── vscode-nvim/      # VSCode Neovim settings
+│   ├── visual-studio/    # Visual Studio settings
+│   └── ssms/             # SQL Server Management Studio settings
+├── .pwsh/profile.ps1     # PowerShell profile
+├── .starship/starship.toml
+├── .vimrc
+├── .dotfiles-repo        # SSH URL used by bootstrap.ps1
 ├── installer/
-│   ├── bootstrap.ps1       # One-time new-machine setup  ← start here
-│   ├── install.ps1         # Interactive TUI package installer
-│   ├── cleanup.ps1         # Interactive system cleanup
-│   ├── lib/
-│   │   └── tui.ps1         # Shared TUI helpers (dot-sourced by all scripts)
-│   ├── packages/
-│   │   ├── scoop.txt       # Scoop package list
-│   │   └── winget.txt      # Winget package IDs
-│   └── fonts/              # Font files (installed by install.ps1)
-├── dotfiles.ps1            # Sync helper (stage → commit → push)
+│   ├── bootstrap.ps1     # New-machine setup
+│   ├── install.ps1       # Interactive package installer
+│   ├── cleanup.ps1       # Interactive cleanup tool
+│   ├── lib/              # Shared script helpers
+│   ├── packages/         # Scoop and WinGet package lists
+│   └── fonts/            # Fonts installed by install.ps1
+├── dotfiles.ps1          # Stage, commit, and push helper
 └── README.md
 ```
 
-## The `dot` Command
+## Dot Command
 
-All dotfiles are managed via a bare git repository at `~/.dotfiles`.
-The `dot` alias wraps `git` with the correct flags:
+The PowerShell profile defines a `dot` alias for the bare repository:
 
 ```powershell
 function Invoke-Dot {
@@ -45,7 +40,7 @@ function Invoke-Dot {
 New-Alias dot Invoke-Dot
 ```
 
-Use it exactly like `git`:
+Use `dot` the same way you use `git`:
 
 ```powershell
 dot status
@@ -54,29 +49,27 @@ dot commit -m "update nvim config"
 dot push origin main
 ```
 
-> The alias is defined in `~/.pwsh/profile.ps1` and loaded automatically.
+## New Machine Setup
 
----
-
-## Setting Up a New Machine
-
-### Option A — Bootstrap script (recommended)
+Download and run the bootstrap script:
 
 ```powershell
-# Download and run locally:
-irm https://raw.githubusercontent.com/gin31259461/dotfiles-win/main/installer/bootstrap.ps1 -OutFile bootstrap.ps1
-
+$Bootstrap = "https://github.com/gin31259461/dotfiles-win" +
+    "/raw/main/installer/bootstrap.ps1"
+irm $Bootstrap -OutFile bootstrap.ps1
 .\bootstrap.ps1
 ```
 
-Flags:
-- `-Yes` — non-interactive, accept all defaults
-- `-Repo <url>` — SSH URL of your fork (`user/repo` shorthand accepted)
+Useful flags:
 
-What it does: checks prerequisites → clones repo → deploys files to `$HOME` →
-configures git → inits submodules → optional `install.ps1`.
+- `-Yes`: accept defaults without prompts.
+- `-Repo <url>`: clone from a fork or another SSH remote.
 
-### Option B — Manual
+The bootstrap script checks prerequisites, clones the bare repository, deploys
+files to `$HOME`, configures Git, initializes submodules, and can launch the
+package installer.
+
+## Manual Setup
 
 ```powershell
 git clone --separate-git-dir="$HOME/.dotfiles" `
@@ -86,127 +79,77 @@ git clone --separate-git-dir="$HOME/.dotfiles" `
 robocopy "$env:TEMP\dotfiles-tmp" $HOME /E /XD .git | Out-Null
 Remove-Item "$env:TEMP\dotfiles-tmp" -Recurse -Force
 
-git --git-dir="$HOME/.dotfiles" --work-tree="$HOME" config --local status.showUntrackedFiles no
+git --git-dir="$HOME/.dotfiles" --work-tree="$HOME" `
+    config --local status.showUntrackedFiles no
 ```
 
-### Install packages
+## Packages
+
+Package lists are plain text files:
+
+- `installer/packages/scoop.txt`
+- `installer/packages/winget.txt`
+
+Blank lines and lines starting with `#` are ignored. Run the installer when you
+want to install or update selected packages:
 
 ```powershell
 .\installer\install.ps1
 ```
 
-The interactive TUI lets you toggle which packages and features to install
-before anything touches your system.
+## Syncing Changes
 
----
-
-## Syncing Dotfiles
-
-`dotfiles.ps1` stages every tracked path, commits, and pushes in one shot.
+Use `dotfiles.ps1` to stage tracked paths, commit, and push:
 
 ```powershell
-.\dotfiles.ps1                              # interactive commit message prompt
-.\dotfiles.ps1 -Message "update config"    # skip prompt, use provided message
-.\dotfiles.ps1 -DryRun                     # preview without committing
+.\dotfiles.ps1
+.\dotfiles.ps1 -Message "update config"
+.\dotfiles.ps1 -DryRun
 ```
 
-When `-Message` is omitted, a `Read-Host` prompt opens. Leave it empty to
-fall back to `"sync dotfiles"`.
+If `-Message` is omitted, the script prompts for one. An empty message falls
+back to `sync dotfiles`.
 
----
+## Fork Workflow
 
-## Fork Owner Workflow
+Store your fork remote during bootstrap:
 
-`.dotfiles-repo` stores the SSH URL for your machine's dotfiles remote.
-This file is tracked and deployed to every new machine, so `bootstrap.ps1`
-knows which fork to clone without any flags.
-
-**First time (setting up your fork):**
 ```powershell
 .\installer\bootstrap.ps1 -Repo 'git@github.com:you/dotfiles-win.git'
 ```
-This clones the default repo as a base, sets your SSH URL as `origin`, bakes
-your URL into the deployed `bootstrap.ps1`, and writes `~/.dotfiles-repo`.
 
-**Commit and push your fork:**
+The script writes the remote to `~/.dotfiles-repo` so future machines can use
+your fork without passing `-Repo` again. Commit the updated file and script:
+
 ```powershell
 .\dotfiles.ps1 -Message "chore: set fork remote"
 ```
 
-**All subsequent machines — no `-Repo` needed:**
-```powershell
-irm https://raw.githubusercontent.com/you/dotfiles-win/main/installer/bootstrap.ps1 -OutFile bootstrap.ps1
-
-.\bootstrap.ps1
-```
-
----
-
 ## Cleanup
 
-Free disk space interactively:
+Run the cleanup tool when you want to clear caches and temporary files:
 
 ```powershell
-.\installer\cleanup.ps1              # select tasks from a numbered list
-.\installer\cleanup.ps1 -Unattended  # skip confirmations, run everything
+.\installer\cleanup.ps1
+.\installer\cleanup.ps1 -Unattended
 ```
 
-Tasks: Scoop cache · Temp folder · npm cache · WinGet cache · Recycle Bin · thumbnail cache
-
----
+Cleanup covers Scoop, npm, WinGet, temporary files, the Recycle Bin, and the
+thumbnail cache.
 
 ## Submodules
 
-| Submodule | Path | Repository |
-|-----------|------|------------|
-| nvchad | `.config/nvim` | `git@github.com:gin31259461/nvchad.git` |
+| Name | Path | Repository |
+| --- | --- | --- |
+| nvchad-config | `.config/nvim` | `git@github.com:gin31259461/nvchad.git` |
 | wezterm | `.config/wezterm` | `git@github.com:gin31259461/wezterm.git` |
 
-After bootstrapping, initialise submodules:
+Initialize or refresh submodules with:
 
 ```powershell
 dot submodule update --init --recursive
 ```
 
----
-
-## First Time Setup (from scratch)
-
-Steps for creating this repo on a new machine.
-
-### 1. Create the bare repository
-
-```powershell
-git init --bare $HOME/.dotfiles
-```
-
-### 2. Bootstrap the profile
-
-Paste the snippet below into a temporary PowerShell session so you can use `dot`:
-
-```powershell
-function Invoke-Dot { git --git-dir="$HOME/.dotfiles/" --work-tree="$HOME" @Args }
-New-Alias dot Invoke-Dot
-```
-
-### 3. Add a remote and configure
-
-```powershell
-dot remote add origin git@github.com:your-username/dotfiles-win.git
-dot branch -m main
-dot config --local status.showUntrackedFiles no
-```
-
-### 4. Track files and push
-
-```powershell
-dot add README.md dotfiles.ps1 installer .pwsh .starship .vimrc .config/nvim
-dot commit -m "initial dotfiles"
-dot push -u origin main
-```
-
----
-
-## References
+## Reference
 
 - [A simpler way to manage your dotfiles](https://www.anand-iyer.com/blog/2018/a-simpler-way-to-manage-your-dotfiles/)
