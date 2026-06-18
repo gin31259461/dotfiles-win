@@ -1,26 +1,34 @@
-# Workflow D: Query / Summarize
+# Query And Summarize
 
-**Pre-requisite**: Pre-flight completed (relevant DBs resolved).
+Prerequisite: Pre-flight resolved the relevant databases.
 
-## Spending by category (current month)
+## Spending By Category
 
-```
+Search Transactions by category or item, then fetch matching pages to read
+`Amount`, `Type`, `Date`, and relations.
+
+```text
 notion_notion-search(
   query = "<category or item>",
   data_source_url = $transactionsDS
 )
 ```
 
-Then fetch individual pages to read Amount + Date.
+## Fixed Expense Burden
 
-## Fixed expense monthly burden
+Find Fixed Expenses with scoped search. If results are empty or incomplete, use
+workspace search plus ancestor-path verification. For each verified page:
 
-Find all pages in Fixed Expenses DB using the two-pass approach (workspace search + ancestor-path verification). For each verified page, read `Amount` and `Billing Cycle` to compute Monthly Amortization (Monthly = Amount, Annually = round(Amount / 12)). Sum all qualifying MA values where Amount > 0.
+- Monthly: monthly amortization is `Amount`.
+- Annually: monthly amortization is `round(Amount / 12)`.
+- Ignore rows with missing or zero Amount.
 
-## Account balance
+## Account Balance
 
-Fetch the account page from Accounts DB. The `Current Balance` formula field shows: `Initial Balance + Net Flow`.
+Fetch the account page. `Current Balance` is a read-only formula:
+`Initial Balance + Net Flow`.
 
-## Category totals
+## Category Totals
 
-Fetch a category page from Categories DB. The `Total Spent` rollup sums all linked transaction `Flow_Amount` values.
+Fetch the category page. `Total Spent` is a read-only rollup over linked
+transaction `Flow_Amount` values.

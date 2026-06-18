@@ -1,24 +1,21 @@
-# Reference Data
+# Categories And Accounts
 
-Always **fetch or search** Categories DB before inserting a transaction to get current page URLs. Do **not** hardcode URLs — they may change if categories are recreated.
+Always fetch or search current pages before creating transactions. Use returned
+page URLs in relation arrays; do not hardcode old URLs.
 
 ## Categories
 
-| Category Name | Covers |
-|---|---|
-| 貸款 | Loan repayments (car loan, etc.) |
-| 稅務 | Government taxes (fuel tax, registration tax) |
-| 電信費 | Telecom bills (中華電信, mobile plans) |
-| 訂閱服務 | Digital subscriptions (Github Copilot, streaming) |
-| 娛樂 | Entertainment spending (games, outings) |
-| 醫療 | Medical & dental expenses |
+- `貸款`: loan repayments.
+- `稅務`: government taxes.
+- `電信費`: telecom bills.
+- `訂閱服務`: digital subscriptions.
+- `娛樂`: entertainment spending.
+- `醫療`: medical and dental expenses.
 
-When a transaction does not fit any existing category, **create a new category first** then link it.
+Create a new category before linking a transaction that does not fit the list.
 
 ## Accounts
 
-| Account Name | Notes |
-|---|---|
-| 現金 | Default cash account |
+- `現金`: default cash account.
 
-Add new accounts as needed via the Add Account workflow.
+Add new accounts through the Add Account workflow as needed.

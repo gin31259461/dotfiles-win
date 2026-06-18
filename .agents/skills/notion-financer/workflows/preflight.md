@@ -1,62 +1,55 @@
-# Pre-flight: Discover Database IDs
+# Pre-Flight
 
-Run this before any workflow. Store discovered IDs as variables for the session.
+Run this before every finance workflow. Store discovered values for the
+session; do not reuse IDs or page URLs from earlier sessions.
 
-## Step 1 — Find the Financer page
+## Find The Workspace
 
-Search for it by name:
+Search for the Financer page:
 
-```
+```text
 notion_notion-search(query = "Financer")
 ```
 
-Look for the result with title "Financer". Use its `id` or `url`.
+Use the result titled `Financer`.
 
-## Step 2 — Fetch and extract database entries
+## Discover Databases
 
-Fetch the page to reveal linked databases:
+Fetch the Financer page:
 
-```
-notion_notion-fetch(id = "<financer page id/url>")
-```
-
-Get page response with `<page>` tags. Look for the one with title "Database".
-
-```xml
-<page url=$databasePageURL>Database</page>
+```text
+notion_notion-fetch(id = "<financer page id or url>")
 ```
 
-And then fetch that page to get the list of databases:
+Find the child page titled `Database`, then fetch it:
 
-```
+```text
 notion_notion-fetch(id = $databasePageURL)
 ```
 
-The response contains `<database>` tags with `data-source-url` attributes:
+Extract each `<database>` tag and store both values:
 
-```xml
-<database data-source-url="collection://<uuid>">Transactions DB</database>
-<database data-source-url="collection://<uuid>">Categories DB</database>
-<database data-source-url="collection://<uuid>">Accounts DB</database>
-<database data-source-url="collection://<uuid>">Fixed Expenses DB</database>
-<database data-source-url="collection://<uuid>">Monthly Report DB</database>
-```
+- `$transactionsDS`: `collection://<uuid>`
+- `$transactionsID`: `<uuid>`
+- `$categoriesDS`: `collection://<uuid>`
+- `$categoriesID`: `<uuid>`
+- `$accountsDS`: `collection://<uuid>`
+- `$accountsID`: `<uuid>`
+- `$fixedExpensesDS`: `collection://<uuid>`
+- `$fixedExpensesID`: `<uuid>`
+- `$monthlyReportDS`: `collection://<uuid>`
+- `$monthlyReportID`: `<uuid>`
 
-Extract both forms for each:
+Use `collection://<uuid>` for search `data_source_url`. Use `<uuid>` for
+`parent.data_source_id` when creating pages.
 
-| Variable | For search `data_source_url` | For create `parent.data_source_id` |
-|---|---|---|
-| `$transactionsDS` | `collection://<uuid>` | `<uuid>` |
-| `$categoriesDS` | `collection://<uuid>` | `<uuid>` |
-| `$accountsDS` | `collection://<uuid>` | `<uuid>` |
-| `$fixedExpensesDS` | `collection://<uuid>` | `<uuid>` |
-| `$monthlyReportDS` | `collection://<uuid>` | `<uuid>` |
+## Resolve Relations Fresh
 
-## Step 3 — Discover Category and Account page URLs
+Before creating transactions, search current Categories and Accounts pages:
 
-Before creating transactions, always search the Categories DB and Accounts DB to resolve current page URLs (do not reuse cached URLs from previous sessions):
-
-```
+```text
 notion_notion-search(query = "<category name>", data_source_url = $categoriesDS)
 notion_notion-search(query = "<account name>", data_source_url = $accountsDS)
 ```
+
+Use returned page URLs in relation arrays.

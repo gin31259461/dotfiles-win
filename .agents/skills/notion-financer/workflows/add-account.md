@@ -1,20 +1,16 @@
-# Workflow C: Add an Account
+# Add Account
 
-**Pre-requisite**: Pre-flight completed (`$accountsDS` resolved).
+Prerequisite: Pre-flight resolved `$accountsID` and `$accountsDS`.
 
-## Step 1 — Parse input
+## Workflow
 
-Extract: Account Name, Initial Balance (default `0` if not given).
+1. Extract `Account Name` and `Initial Balance`; default balance to `0`.
+2. Search Accounts for duplicates. If found, update only when the user agrees.
+3. Create the account.
 
-## Step 2 — Check for duplicates
-
-Search Accounts DB first. If found, offer to update instead.
-
-## Step 3 — Create
-
-```
+```text
 notion_notion-create-pages(
-  parent = { data_source_id: $accountsDS },
+  parent = { data_source_id: $accountsID },
   pages = [{
     properties: {
       "Account Name": "<name>",

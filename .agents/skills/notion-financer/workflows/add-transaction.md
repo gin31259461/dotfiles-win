@@ -1,60 +1,44 @@
-# Workflow A: Add a Transaction (Income or Expense)
+# Add Transaction
 
-**Pre-requisite**: Pre-flight completed (`$transactionsDS`, `$categoriesDS`, `$accountsDS` resolved).
+Use for one-time income or expense records.
 
-## Step 1 — Parse input
+Prerequisite: Pre-flight resolved `$transactionsID`, `$categoriesID`,
+`$categoriesDS`, `$accountsID`, and `$accountsDS`.
 
-Extract from user input:
+## Parse
 
-- `Item Name` — what was bought/received
-- `Amount` — positive number
-- `Type` — `"Income"` or `"Expense"` (default to `"Expense"` if unclear)
-- `Date` — resolve relative dates against today in GMT+8
-- `Category` — match to existing category; create new if unmatched
-- `Account` — default to `現金` unless user specifies otherwise
+Extract:
 
-## Step 2 — Resolve Category URL
+- `Item Name`: what was bought or received.
+- `Amount`: positive number.
+- `Type`: `"Income"` or `"Expense"`; default to `"Expense"` if unclear.
+- `Date`: resolve relative dates in GMT+8.
+- `Category`: match an existing category; create one if needed.
+- `Account`: default to `現金` unless the user specifies another account.
 
-Search Categories DB to get the page URL:
+## Resolve Category And Account
 
-```
-notion_notion-search(
-  query = "<category name>",
-  data_source_url = $categoriesDS
-)
-```
+Search current pages and use result URLs:
 
-Use the `url` field from the result.
-
-## Step 3 — Resolve Account URL
-
-Search Accounts DB:
-
-```
-notion_notion-search(
-  query = "<account name>",
-  data_source_url = $accountsDS
-)
+```text
+notion_notion-search(query = "<category name>", data_source_url = $categoriesDS)
+notion_notion-search(query = "<account name>", data_source_url = $accountsDS)
 ```
 
-## Step 3b — Create Category (if needed)
+If the category is missing, create it first:
 
-If no matching category exists, create it first:
-
-```
+```text
 notion_notion-create-pages(
-  parent = { data_source_id: $categoriesDS },
+  parent = { data_source_id: $categoriesID },
   pages = [{ properties: { "Category Name": "<name>" } }]
 )
 ```
 
-Use the returned URL for the transaction's `Category` relation.
+## Create Transaction
 
-## Step 4 — Create transaction
-
-```
+```text
 notion_notion-create-pages(
-  parent = { data_source_id: $transactionsDS },
+  parent = { data_source_id: $transactionsID },
   pages = [{
     properties: {
       "Item Name": "<name>",
@@ -69,6 +53,4 @@ notion_notion-create-pages(
 )
 ```
 
-## Step 5 — Confirm
-
-Reply with: item name, amount, type, date, category, account, and the returned Notion URL.
+Reply with item name, amount, type, date, category, account, and Notion URL.

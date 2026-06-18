@@ -1,70 +1,84 @@
 # Database Reference
 
-All five databases live under the **Financer/Database** page. Discover their IDs dynamically via the Pre-flight workflow.
+All databases live under `Financer/Database`. Discover IDs with Pre-flight.
 
-## Transactions DB — Writable Properties
+## Transactions DB
 
-| Property | Type | Notes |
-|---|---|---|
-| `Item Name` | title | Description of the transaction |
-| `Type` | select | `"Income"` or `"Expense"` |
-| `Amount` | number | Positive value; sign handled by `Flow_Amount` formula |
-| `date:Date:start` | date | ISO-8601 date or datetime (see Timezone Rules) |
-| `date:Date:is_datetime` | integer | `1` if time included, `0` for date-only |
-| `Category` | relation | JSON array of **one** Category page URL |
-| `Account` | relation | JSON array of **one** Account page URL |
-| `Monthly Report` | relation | JSON array of Monthly Report page URL (links transaction to a monthly report) |
-| `Flow_Amount` | formula | **read-only** — do not write |
-| `Income_Amount` | formula | **read-only** — Amount if Income, else 0 |
-| `Expense_Amount` | formula | **read-only** — Amount if Expense, else 0 |
+Writable properties:
 
-## Categories DB — Writable Properties
+- `Item Name`: title.
+- `Type`: select, `"Income"` or `"Expense"`.
+- `Amount`: positive number; sign is handled by `Flow_Amount`.
+- `date:Date:start`: ISO date or datetime.
+- `date:Date:is_datetime`: `1` for datetime, `0` for date-only.
+- `Category`: relation array with one Category page URL.
+- `Account`: relation array with one Account page URL.
+- `Monthly Report`: relation array with one Monthly Report page URL.
 
-| Property | Type | Notes |
-|---|---|---|
-| `Category Name` | title | Human-readable label |
-| `Monthly Budget` | number | Optional monthly spending cap |
-| `Transactions` | relation | **read-only** (back-relation from Transactions) |
-| `Total Spent` | rollup | **read-only** |
+Read-only:
 
-## Accounts DB — Writable Properties
+- `Flow_Amount`: signed amount formula.
+- `Income_Amount`: amount for income, otherwise `0`.
+- `Expense_Amount`: amount for expense, otherwise `0`.
 
-| Property | Type | Notes |
-|---|---|---|
-| `Account Name` | title | e.g. 現金, 玉山, 國泰 |
-| `Initial Balance` | number | Starting balance at account creation |
-| `Transactions` | relation | **read-only** (back-relation) |
-| `Net Flow` | rollup | **read-only** |
-| `Current Balance` | formula | **read-only** |
+## Categories DB
 
-## Fixed Expenses DB — Writable Properties
+Writable properties:
 
-| Property | Type | Notes |
-|---|---|---|
-| `Item Name` | title | Name of the recurring expense |
-| `Amount` | number | Full billing amount per cycle |
-| `Billing Cycle` | select | `"Monthly"` or `"Annually"` |
-| `date:Start Date:start` | date | First billing date (date-only) |
-| `date:Start Date:is_datetime` | integer | Always `0` (date-only) |
-| `Total Months` | number | Loan duration in months; `null` or `-1` = indefinite |
-| `Category` | relation | JSON array of **one** Category page URL |
-| `Monthly Report` | relation | JSON array of Monthly Report page URL (links to monthly reports) |
-| `Monthly Amortization` | formula | **read-only** — `Amount` (Monthly) or `round(Amount / 12)` (Annually); indefinite when `Total Months` is null or -1 |
+- `Category Name`: title.
+- `Monthly Budget`: optional number.
 
-## Monthly Report — Writable Properties
+Read-only:
 
-| Property | Type | Notes |
-|---|---|---|
-| `Month` | title | Period label, e.g. `"2026-06"` |
-| `date:Period Start:start` | date | First day of the month (date-only) |
-| `date:Period Start:is_datetime` | integer | Always `0` |
-| `Transactions` | relation | JSON array of Transactions page URLs for this month |
-| `Fixed Expenses` | relation | JSON array of Fixed Expenses page URLs active this month |
-| `Notes` | text | Free-form observations for the period |
-| `Total Income` | rollup | **read-only** — sum of `Income_Amount` from linked Transactions |
-| `Variable Spending` | rollup | **read-only** — sum of `Expense_Amount` from linked Transactions |
-| `Fixed Burden` | rollup | **read-only** — sum of `Monthly Amortization` from linked Fixed Expenses |
-| `Total Spending` | formula | **read-only** — `Variable Spending + Fixed Burden` |
-| `Net` | formula | **read-only** — `Total Income − Variable Spending − Fixed Burden` |
+- `Transactions`: back-relation from Transactions.
+- `Total Spent`: rollup.
 
-The Monthly Report DB has a template page — discover it dynamically via Pre-flight Step 3.
+## Accounts DB
+
+Writable properties:
+
+- `Account Name`: title, such as `現金`, `玉山`, or `國泰`.
+- `Initial Balance`: starting balance.
+
+Read-only:
+
+- `Transactions`: back-relation.
+- `Net Flow`: rollup.
+- `Current Balance`: formula.
+
+## Fixed Expenses DB
+
+Writable properties:
+
+- `Item Name`: title.
+- `Amount`: full billing amount per cycle.
+- `Billing Cycle`: select, `"Monthly"` or `"Annually"`.
+- `date:Start Date:start`: first billing date.
+- `date:Start Date:is_datetime`: always `0`.
+- `Total Months`: duration; `null` or `-1` means indefinite.
+- `Category`: relation array with one Category page URL.
+- `Monthly Report`: relation array with Monthly Report page URLs.
+
+Read-only:
+
+- `Monthly Amortization`: formula. Monthly rows use `Amount`; annual rows use
+  `round(Amount / 12)`.
+
+## Monthly Report DB
+
+Writable properties:
+
+- `Month`: title, such as `2026-06`.
+- `date:Period Start:start`: first day of month.
+- `date:Period Start:is_datetime`: always `0`.
+- `Transactions`: relation array with Transactions page URLs.
+- `Fixed Expenses`: relation array with Fixed Expenses page URLs.
+- `Notes`: text.
+
+Read-only:
+
+- `Total Income`: rollup of linked `Income_Amount`.
+- `Variable Spending`: rollup of linked `Expense_Amount`.
+- `Fixed Burden`: rollup of linked `Monthly Amortization`.
+- `Total Spending`: formula for variable spending plus fixed burden.
+- `Net`: formula for income minus total spending.

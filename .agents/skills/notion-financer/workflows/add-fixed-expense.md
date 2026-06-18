@@ -1,50 +1,43 @@
-# Workflow B: Add a Fixed Expense
+# Add Fixed Expense
 
-Use for **recurring** bills (subscriptions, loans, taxes). One entry per expense type — not per billing period.
+Use for recurring bills such as subscriptions, loans, and taxes. Keep one
+entry per recurring item, not one per billing period.
 
-**Pre-requisite**: Pre-flight completed (`$fixedExpensesDS`, `$categoriesDS` resolved).
+Prerequisite: Pre-flight resolved `$fixedExpensesID`, `$fixedExpensesDS`,
+`$categoriesID`, and `$categoriesDS`.
 
-## Step 1 — Parse input
+## Parse
 
 Extract:
 
 - `Item Name`
-- `Amount` — full amount per billing cycle
-- `Billing Cycle` — `"Monthly"` or `"Annually"`
-- `Start Date` — first billing date (date-only)
-- `Category` — match to existing category; create new if unmatched
-- `Total Months` — (optional) for finite-duration items like loans
+- `Amount`: full amount per billing cycle.
+- `Billing Cycle`: `"Monthly"` or `"Annually"`.
+- `Start Date`: first billing date, date-only.
+- `Category`: match an existing category; create one if needed.
+- `Total Months`: optional loan or finite-term duration.
 
-## Step 2 — Check for duplicates
+## Deduplicate
 
-Use a two-pass approach since `data_source_url` scoped search is unreliable:
+Search by item name in Fixed Expenses. Scoped search may be incomplete, so use
+workspace search plus ancestor-path verification when needed.
 
-**Pass 1** — Try scoped search:
-
-```
-notion_notion-search(
-  query = "<item name>",
-  data_source_url = $fixedExpensesDS
-)
-```
-
-**Pass 2** — If Pass 1 returns zero results or `type` is `workspace_search`, fall back to workspace search + ancestor-path verification:
-
-```
+```text
+notion_notion-search(query = "<item name>", data_source_url = $fixedExpensesDS)
 notion_notion-search(query = "<item name>")
-# For each result, fetch and check:
-# <parent-data-source url="collection://<matches $fixedExpensesDS>" name="Fixed Expenses DB"/>
+notion_notion-fetch(id = "<candidate page url>")
 ```
 
-If an entry with the same name already exists, **update** it instead of creating a duplicate.
+Only treat a result as a duplicate when its parent data source matches
+`$fixedExpensesDS`. Update duplicates instead of creating new rows.
 
-## Step 3 — Create (or update) entry
+## Create Or Update
 
 Create:
 
-```
+```text
 notion_notion-create-pages(
-  parent = { data_source_id: $fixedExpensesDS },
+  parent = { data_source_id: $fixedExpensesID },
   pages = [{
     properties: {
       "Item Name": "<name>",
@@ -59,9 +52,9 @@ notion_notion-create-pages(
 )
 ```
 
-Update (if already exists):
+Update:
 
-```
+```text
 notion_notion-update-page(
   page_id = "<existing page id>",
   command = "update_properties",
@@ -69,6 +62,5 @@ notion_notion-update-page(
 )
 ```
 
-## Step 4 — Confirm
-
-Reply with item name, amount, billing cycle, start date, and monthly amortization note (Amount ÷ 12 for annual items).
+Reply with item name, amount, billing cycle, start date, and monthly
+amortization. Annual items amortize as `round(Amount / 12)`.
