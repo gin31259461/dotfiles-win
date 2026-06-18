@@ -1,4 +1,4 @@
-# ─── Aliases ─────────────────────────────────────────────────────────────────
+﻿# ─── Aliases ─────────────────────────────────────────────────────────────────
 
 New-Alias -Name v   -Value nvim              -ErrorAction SilentlyContinue
 New-Alias -Name k   -Value kubectl           -ErrorAction SilentlyContinue
@@ -11,7 +11,25 @@ New-Alias -Name h -Value helm -ErrorAction SilentlyContinue
 
 # ─── Environment ───────────────────────────────────────────────────────────────
 
-[Environment]::SetEnvironmentVariable("Path", $env:Path + "$HOME\installer", "User")
+$installerPath = Join-Path -Path $HOME -ChildPath 'installer'
+
+if (Test-Path -LiteralPath $installerPath -PathType Container)
+{
+  $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+  $userPathEntries = @($userPath -split ';' | Where-Object { $_ })
+
+  if ($userPathEntries -notcontains $installerPath)
+  {
+    [Environment]::SetEnvironmentVariable('Path', (($userPathEntries + $installerPath) -join ';'), 'User')
+  }
+
+  $sessionPathEntries = @($env:Path -split ';' | Where-Object { $_ })
+
+  if ($sessionPathEntries -notcontains $installerPath)
+  {
+    $env:Path = ($sessionPathEntries + $installerPath) -join ';'
+  }
+}
 
 # ─── Functions ───────────────────────────────────────────────────────────────
 
