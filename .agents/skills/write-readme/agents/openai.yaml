@@ -1,0 +1,4 @@
+interface:
+  display_name: "Write README"
+  short_description: "Create, improve, and audit READMEs"
+  default_prompt: "Use $write-readme to create or improve a concise README for this project"
