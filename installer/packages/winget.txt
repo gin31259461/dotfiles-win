@@ -1,7 +1,0 @@
-Starship.Starship
-Neovim.Neovim
-BurntSushi.ripgrep.MSVC
-Notion.Notion
-Obsidian.Obsidian
-wez.wezterm
-DEVCOM.Lua
