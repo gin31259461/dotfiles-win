@@ -11,23 +11,23 @@ New-Alias -Name h -Value helm -ErrorAction SilentlyContinue
 
 # ─── Environment ───────────────────────────────────────────────────────────────
 
-$installerPath = Join-Path -Path $HOME -ChildPath 'installer'
+$homebaseBinPath = Join-Path -Path $HOME -ChildPath '.local\bin'
 
-if (Test-Path -LiteralPath $installerPath -PathType Container)
+if (Test-Path -LiteralPath $homebaseBinPath -PathType Container)
 {
   $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
   $userPathEntries = @($userPath -split ';' | Where-Object { $_ })
 
-  if ($userPathEntries -notcontains $installerPath)
+  if ($userPathEntries -notcontains $homebaseBinPath)
   {
-    [Environment]::SetEnvironmentVariable('Path', (($userPathEntries + $installerPath) -join ';'), 'User')
+    [Environment]::SetEnvironmentVariable('Path', (($userPathEntries + $homebaseBinPath) -join ';'), 'User')
   }
 
   $sessionPathEntries = @($env:Path -split ';' | Where-Object { $_ })
 
-  if ($sessionPathEntries -notcontains $installerPath)
+  if ($sessionPathEntries -notcontains $homebaseBinPath)
   {
-    $env:Path = ($sessionPathEntries + $installerPath) -join ';'
+    $env:Path = ($sessionPathEntries + $homebaseBinPath) -join ';'
   }
 }
 
