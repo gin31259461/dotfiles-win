@@ -1,72 +1,139 @@
-﻿# Windows Dotfiles
+# AGENTS instructions
 
-Bare git repo, used for managing dotfiles in $HOME with a separate git directory at ~/.dotfiles/.
+This is a bare-Git dotfiles work tree rooted at `$HOME`.
 
-```bash
+- Work tree: `$HOME`
+- Git directory: `~/.dotfiles`
+- Dotfiles remote memory: `~/.dotfiles-repo`
+- Homebase source: `~/.local/lib/homebase`
+- Homebase binary: `~/.local/bin/hb.exe`
+
+Use the bare repo form for dotfiles Git operations:
+
+```powershell
+git --git-dir="$HOME/.dotfiles/" --work-tree="$HOME" status
+```
+
+The PowerShell profile defines the `dot` alias:
+
+```powershell
 New-Alias -Name dot -Value Invoke-Dot -ErrorAction SilentlyContinue
 
 function Invoke-Dot {
-    <#
-    .SYNOPSIS
-        Manage dotfiles via a bare git repository at ~/.dotfiles.
-    .EXAMPLE
-        dot status
-        dot add .config/nvim
-        dot commit -m "update nvim"
-        dot push origin main
-    #>
-    git --git-dir="$HOME/.dotfiles/" --work-tree="$HOME" @Args
+  git --git-dir="$HOME/.dotfiles/" --work-tree="$HOME" @Args
 }
 ```
 
-## Scripts
+## Current Workflow
 
-- ~/.pwsh/profile.ps1: PowerShell profile (symlinked to `$profile`)
-- ~/installer: bootstrap.ps1, install.ps1, cleanup.ps1, lib/, packages/, fonts/
-- ~/dotfiles.ps1: Sync helper: stage → commit → push
+Homebase owns bootstrap, package install, cleanup, and dotfiles sync.
 
-## Package Lists
+```powershell
+hb bootstrap
+hb install
+hb cleanup
+hb sync
+```
 
-- installer/packages/scoop.txt (one per line)
-- installer/packages/winget.txt (one ID per line)
-- `#` lines ignored
+Do not restore the old `installer/` workflow. The old PowerShell scripts,
+package text files, and bundled fonts were replaced by Homebase.
+
+## Dotfiles Repo Contents
+
+Tracked dotfiles include:
+
+- `.pwsh/profile.ps1`: PowerShell profile, linked to PowerShell profile paths
+- `.config/nvim`: Neovim config submodule
+- `.config/wezterm`: WezTerm config submodule
+- `.config/vscode-nvim`: VSCode Neovim settings
+- `.config/visual-studio`: Visual Studio settings
+- `.config/ssms`: SQL Server Management Studio settings
+- `.config/opencode/opencode.jsonc`: opencode config
+- `.starship/starship.toml`: Starship prompt config
+- `.vimrc`, `.gitconfig`, `.gitignore`, `.gitattributes`, `.gitmodules`
+- `README.md` and `AGENTS.md`
+
+## Homebase Config
+
+Windows package, cleanup, and sync configuration lives in Homebase TOML:
+
+```text
+~/.config/homebase/platforms/windows/
+~/.local/lib/homebase/config/platforms/windows/
+```
+
+Default Windows package groups are in:
+
+```text
+~/.local/lib/homebase/config/platforms/windows/packages.d/*.toml
+```
+
+Use TOML for package changes. Do not recreate:
+
+- `installer/packages/scoop.txt`
+- `installer/packages/winget.txt`
+- bundled font directories
+
+Fonts are installed through Scoop config, currently with:
+
+```toml
+[fonts]
+label = "Fonts"
+scoop_buckets = ["nerd-fonts"]
+scoop = ["FiraCode-NF"]
+```
+
+## Homebase Code Changes
+
+Homebase is a separate Git repository at `~/.local/lib/homebase`.
+
+When editing Homebase:
+
+- Keep platform-specific behavior under `internal/platform/<id>`
+- Do not touch existing Arch Linux platform code unless explicitly requested
+- Keep Windows behavior under `internal/platform/windows`
+- Keep runtime defaults under `config/platforms/windows`
+- Run `gofmt -w cmd internal`
+- Run `go test ./...`
+- Run `go vet ./...`
+- Rebuild with `go build -o ~/.local/bin/hb.exe ./cmd/hb`
+- Run `markdownlint-cli2 README.md` after README changes
 
 ## File Encoding
 
-All .ps1 files must be UTF-8 with BOM (PowerShell 5.1 requirement). Create: `[System.IO.File]::WriteAllText($path, $content, [System.Text.UTF8Encoding]::new($true))`.
+All `.ps1` files must be UTF-8 with BOM for Windows PowerShell 5.1.
 
-Verify: check first 3 bytes are `EF BB BF`.
+Create or rewrite PowerShell files with:
 
-Re-write with BOM if missing after editing.
+```powershell
+[System.IO.File]::WriteAllText(
+  $path,
+  $content,
+  [System.Text.UTF8Encoding]::new($true)
+)
+```
 
-## Commit Rules
+Verify the first three bytes are:
 
-- Structure: header, body (optional), footer (optional).
+```text
+EF BB BF
+```
 
-    ```plain
-    type(scope): subject -> header
+Rewrite with BOM after editing if the marker is missing.
 
-    - content -> body
-    - content
-    - content
+## Syncing Changes
 
-    footer
-    ```
+Prefer Homebase:
 
-- Rules:
-  - header is brief, 50 chars or less, imperative mood, no period at end
-  - body 72 chars wrapped, optional
-  - footer for co-authors, references, etc., optional (this project not allow co-authors trailers)
-  - do not add any co-authors trailers
+```powershell
+hb sync -m "chore: sync dotfiles"
+```
 
-- Types:
-  - feat: new feature
-  - fix: bug fix
-  - docs: documentation only changes
-  - style: code formatting, no logic changes
-  - refactor: code refactoring
-  - perf: performance improvement
-  - test: test changes
-  - build: build system changes
-  - ci: CI configuration changes
-  - chore: other changes
+For manual Git operations:
+
+```powershell
+dot status
+dot add README.md AGENTS.md .pwsh/profile.ps1
+dot commit -m "docs: update dotfiles docs"
+dot push origin main
+```
