@@ -1,14 +1,98 @@
 # Windows Dotfiles
 
-Personal Windows dotfiles managed with a bare Git repository at `~/.dotfiles`.
-Files live in their normal locations under `$HOME`; Git metadata lives outside
-the working tree.
+Personal Windows dotfiles managed by Homebase and a bare Git repository.
 
-Machine bootstrap, package installation, cleanup, and sync are handled by
-[Homebase](https://github.com/gin31259461/homebase). This repository stores the
-dotfiles themselves.
+This repository is the platform homepage for the environment: it documents what
+is managed, how a new machine is brought online, and how changes are synced
+without reviving the old installer workflow.
 
-## Layout
+## Core Value
+
+- Rebuild a Windows development shell from a repeatable Homebase workflow
+- Keep dotfiles in their normal locations under `$HOME`
+- Store Git metadata outside the work tree at `~/.dotfiles`
+- Manage packages, cleanup tasks, and sync paths through Homebase TOML
+- Keep editor, terminal, shell, prompt, and AI-assistant settings versioned
+- Use submodules for larger external configs such as Neovim and WezTerm
+
+Use this repository when setting up or maintaining this Windows workstation,
+syncing personal dotfiles, or adjusting Homebase package and cleanup policy.
+
+## Requirements
+
+- Windows with PowerShell 5.1 or newer
+- `winget` available in `PATH`
+- Git for manual dotfiles operations
+- Go 1.24.2 when rebuilding Homebase from source
+- Network access to the dotfiles and Homebase repositories
+
+Homebase installs or verifies most routine tooling during bootstrap and package
+installation.
+
+## Get Started
+
+Run the Homebase Windows bootstrap from PowerShell:
+
+```powershell
+$repoUrl = "https://raw.githubusercontent.com/gin31259461/homebase"
+irm "$repoUrl/main/bootstrap/windows.ps1" | iex
+```
+
+That script installs minimum dependencies, clones or updates Homebase, builds
+`hb.exe`, adds `~/.local/bin` to the user `Path`, and runs:
+
+```powershell
+hb bootstrap
+```
+
+For unattended setup:
+
+```powershell
+$repoUrl = "https://raw.githubusercontent.com/gin31259461/homebase"
+& ([scriptblock]::Create((irm "$repoUrl/main/bootstrap/windows.ps1"))) -Yes
+```
+
+To bootstrap and install selected package groups in one run:
+
+```powershell
+$repoUrl = "https://raw.githubusercontent.com/gin31259461/homebase"
+& ([scriptblock]::Create((irm "$repoUrl/main/bootstrap/windows.ps1"))) `
+  -Yes -Install
+```
+
+To use a fork or another dotfiles remote:
+
+```powershell
+$repoUrl = "https://raw.githubusercontent.com/gin31259461/homebase"
+& ([scriptblock]::Create((irm "$repoUrl/main/bootstrap/windows.ps1"))) `
+  -DotfilesRepo git@github.com:you/dotfiles-win.git
+```
+
+## Daily Workflow
+
+Homebase is the preferred interface:
+
+```powershell
+hb bootstrap
+hb install
+hb cleanup
+hb sync
+```
+
+Common non-interactive examples:
+
+```powershell
+hb install --group core --group cli --yes
+hb install --group fonts --yes
+hb cleanup --task scoop-cache --task temp-files --yes
+hb sync -m "chore: sync dotfiles"
+hb sync -m "chore: sync dotfiles" --no-push
+```
+
+Interactive commands use Bubble Tea selectors. Automation should pass `--yes`
+with explicit `--group` or `--task` selections, or `--all`.
+
+## Managed Files
 
 ```text
 ~/
@@ -28,55 +112,64 @@ dotfiles themselves.
 `-- README.md
 ```
 
-Homebase is installed separately at:
+Submodules:
+
+| Name | Path | Repository |
+| --- | --- | --- |
+| nvchad-config | `.config/nvim` | `git@github.com:gin31259461/nvchad.git` |
+| wezterm | `.config/wezterm` | `git@github.com:gin31259461/wezterm.git` |
+
+Refresh submodules with:
+
+```powershell
+dot submodule update --init --recursive
+```
+
+## Homebase Layout
+
+Homebase is installed separately from this dotfiles repository:
 
 ```text
 ~/.local/lib/homebase
 ~/.local/bin/hb.exe
 ```
 
-## New Machine Setup
+Runtime Windows configuration:
 
-Run the Homebase Windows bootstrap from PowerShell:
-
-```powershell
-$repoUrl = "https://raw.githubusercontent.com/gin31259461/homebase"
-irm "$repoUrl/main/bootstrap/windows.ps1" | iex
+```text
+~/.config/homebase/platforms/windows/
+~/.config/homebase/platforms/windows/packages.d/*.toml
 ```
 
-That script installs the minimal Homebase dependencies, builds `hb.exe`, adds
-`~/.local/bin` to the user `Path`, then runs:
+This runtime directory controls the current machine and may contain local files
+that are not tracked by the dotfiles repository.
 
-```powershell
-hb bootstrap
+Default Windows configuration source:
+
+```text
+~/.local/lib/homebase/config/platforms/windows/
+~/.local/lib/homebase/config/platforms/windows/packages.d/*.toml
 ```
 
-To run without prompts:
+Current package groups:
 
-```powershell
-$repoUrl = "https://raw.githubusercontent.com/gin31259461/homebase"
-& ([scriptblock]::Create((irm "$repoUrl/main/bootstrap/windows.ps1"))) -Yes
-```
+| Group | Purpose |
+| --- | --- |
+| `core` | Scoop, PowerShell, PSReadLine, Node.js, and pnpm |
+| `cli` | Starship, Neovim, ripgrep, WezTerm, and Lua |
+| `apps` | Notion and Obsidian |
+| `setup` | PowerShell profile and WezTerm context menu setup |
+| `fonts` | `nerd-fonts` Scoop bucket and `FiraCode-NF` |
+| `classic-menu` | Windows 10 classic context menu registry setup |
 
-To bootstrap from a fork or another dotfiles remote:
+Use TOML for package changes. Do not recreate the removed `installer/`
+workflow, old package text files, or bundled font directories.
 
-```powershell
-$repoUrl = "https://raw.githubusercontent.com/gin31259461/homebase"
-& ([scriptblock]::Create((irm "$repoUrl/main/bootstrap/windows.ps1"))) `
-  -DotfilesRepo git@github.com:you/dotfiles-win.git
-```
+## Dotfiles Git
 
-To bootstrap and install all selected Homebase package groups:
+The work tree is `$HOME`; the Git directory is `~/.dotfiles`.
 
-```powershell
-$repoUrl = "https://raw.githubusercontent.com/gin31259461/homebase"
-& ([scriptblock]::Create((irm "$repoUrl/main/bootstrap/windows.ps1"))) `
-  -Yes -Install
-```
-
-## Dot Command
-
-The PowerShell profile defines a `dot` alias for the bare repository:
+The PowerShell profile defines `dot` as a wrapper around the bare repository:
 
 ```powershell
 function Invoke-Dot {
@@ -86,89 +179,22 @@ function Invoke-Dot {
 New-Alias dot Invoke-Dot
 ```
 
-Use `dot` like `git`:
+Use `dot` like regular Git:
 
 ```powershell
 dot status
-dot add .config/nvim
-dot commit -m "update nvim config"
+dot add README.md AGENTS.md .pwsh/profile.ps1
+dot commit -m "docs: update dotfiles docs"
 dot push origin main
 ```
 
-## Homebase Commands
-
-Homebase is the preferred interface for routine maintenance:
+The preferred sync path is still Homebase:
 
 ```powershell
-hb bootstrap
-hb install
-hb cleanup
-hb sync
-```
-
-Common non-interactive examples:
-
-```powershell
-hb install --group core --group cli --yes
-hb install --group fonts --yes
-hb cleanup --task scoop-cache --task temp-files --yes
 hb sync -m "chore: sync dotfiles"
 ```
 
-## Packages
-
-Windows packages are configured in Homebase TOML, not in this dotfiles repo.
-
-Runtime config:
-
-```text
-~/.config/homebase/platforms/windows/packages.d/*.toml
-```
-
-Default config source:
-
-```text
-~/.local/lib/homebase/config/platforms/windows/packages.d/*.toml
-```
-
-Current Windows groups include:
-
-- `core`: Scoop, PowerShell, PSReadLine, Node.js, and pnpm
-- `cli`: Starship, Neovim, ripgrep, WezTerm, and Lua
-- `apps`: Notion and Obsidian
-- `setup`: PowerShell profile and WezTerm context menu setup
-- `fonts`: `nerd-fonts` Scoop bucket and `FiraCode-NF`
-- `classic-menu`: Windows 10 classic context menu registry setup
-
-Run the interactive installer:
-
-```powershell
-hb install
-```
-
-## Syncing Changes
-
-Use Homebase to stage the configured dotfile paths, commit, and push:
-
-```powershell
-hb sync
-hb sync -m "chore: sync dotfiles"
-hb sync -m "chore: sync dotfiles" --no-push
-```
-
-The tracked paths are configured in:
-
-```text
-~/.config/homebase/platforms/windows/sync.toml
-```
-
-Current sync groups cover:
-
-- core repository files: `.dotfiles-repo`, `.gitmodules`, `.gitignore`,
-  `.gitattributes`, `.gitconfig`, `AGENTS.md`, `README.md`
-- config paths: `.config/*`, `.pwsh`, `.starship`, `.vimrc`, `.agents`
-
-## Manual Setup
+## Manual Recovery
 
 Use this only when Homebase is unavailable:
 
@@ -187,84 +213,106 @@ git --git-dir="$HOME/.dotfiles" --work-tree="$HOME" `
   submodule update --init --recursive
 ```
 
-## Fork Workflow
+## Development
 
-Homebase stores the selected dotfiles remote in `~/.dotfiles-repo`.
+Most dotfiles changes are plain configuration edits. Homebase itself is a
+separate Go repository at `~/.local/lib/homebase`.
 
-Set a fork during bootstrap:
+When changing Homebase:
 
 ```powershell
-hb bootstrap --repo git@github.com:you/dotfiles-win.git
+Set-Location ~/.local/lib/homebase
+gofmt -w cmd internal
+go test ./...
+go vet ./...
+go build -o ~/.local/bin/hb.exe ./cmd/hb
 ```
 
-Or edit `~/.dotfiles-repo` directly:
+After README changes in this repository, run:
+
+```powershell
+markdownlint-cli2 README.md AGENTS.md
+```
+
+## FAQ
+
+### Where are dotfiles stored?
+
+Files live in their normal locations under `$HOME`. Git metadata lives in the
+bare repository at `~/.dotfiles`.
+
+### What does `~/.dotfiles-repo` do?
+
+It records the selected dotfiles remote. Homebase uses it when syncing and when
+preserving fork choices across runs.
+
+### Why not use the old installer directory?
+
+Homebase replaced the old PowerShell installer scripts, package text files, and
+bundled font directories. Bootstrap, package install, cleanup, and sync now live
+behind `hb` and Homebase TOML.
+
+### How do I add or remove packages?
+
+Edit TOML under:
 
 ```text
-git@github.com:you/dotfiles-win.git
+~/.config/homebase/platforms/windows/packages.d/
 ```
 
-Then commit the updated memory file:
-
-```powershell
-hb sync -m "chore: set dotfiles remote"
-```
-
-## Cleanup
-
-Run the interactive cleanup selector:
-
-```powershell
-hb cleanup
-```
-
-Run selected tasks:
-
-```powershell
-hb cleanup --task scoop-cache --task temp-files --yes
-hb cleanup --all --yes
-```
-
-Windows cleanup tasks are configured in:
+If the change should become a default, update the matching file under:
 
 ```text
-~/.config/homebase/platforms/windows/cleanup.toml
+~/.local/lib/homebase/config/platforms/windows/packages.d/
 ```
 
-## Submodules
+### What if `hb` is not found?
 
-| Name | Path | Repository |
-| --- | --- | --- |
-| nvchad-config | `.config/nvim` | `git@github.com:gin31259461/nvchad.git` |
-| wezterm | `.config/wezterm` | `git@github.com:gin31259461/wezterm.git` |
-
-Initialize or refresh submodules:
-
-```powershell
-dot submodule update --init --recursive
-```
-
-## Troubleshooting
-
-If `hb` is not found, open a new terminal or confirm this path is in the user
-`Path`:
+Open a new terminal or confirm this directory is in the user `Path`:
 
 ```text
 %USERPROFILE%\.local\bin
 ```
 
-Rebuild Homebase:
+Rebuild Homebase if the binary is missing:
 
 ```powershell
 Set-Location ~/.local/lib/homebase
 go build -o ~/.local/bin/hb.exe ./cmd/hb
 ```
 
-If Homebase config is missing or stale:
+### How do I refresh missing Homebase config?
 
 ```powershell
 hb config init
 ```
 
+Use `--force` only when you intentionally want to refresh runtime config from
+Homebase defaults.
+
+## Contributing
+
+Read `AGENTS.md` before changing files. It captures the automation boundaries,
+encoding rules, verification commands, and repository split between dotfiles and
+Homebase.
+
+For bug reports, include:
+
+- Windows version and PowerShell version
+- The `hb` or `dot` command that failed
+- Relevant flags and config paths
+- Expected behavior and actual output
+- Whether the change involved runtime config or Homebase defaults
+
+For pull requests:
+
+- Keep changes scoped to the affected dotfile or Homebase area
+- Use Homebase TOML for package, cleanup, and sync policy
+- Do not restore the removed `installer/` workflow
+- Preserve PowerShell UTF-8 with BOM requirements for `.ps1` files
+- Run the relevant verification commands before submitting
+
 ## Reference
 
+- [Homebase](https://github.com/gin31259461/homebase)
 - [A simpler way to manage your dotfiles](https://www.anand-iyer.com/blog/2018/a-simpler-way-to-manage-your-dotfiles/)
