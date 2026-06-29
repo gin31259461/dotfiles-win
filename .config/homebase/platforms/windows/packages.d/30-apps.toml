@@ -1,0 +1,13 @@
+[apps]
+label = "Desktop apps"
+winget = [
+  "Notion.Notion",
+  "Obsidian.Obsidian",
+]
+
+[neovim]
+label = "Neovim"
+winget = [
+  "Neovim.Neovim",
+  "tree-sitter.tree-sitter-cli",
+]

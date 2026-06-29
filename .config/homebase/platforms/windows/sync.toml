@@ -1,0 +1,26 @@
+[core]
+paths = [
+  ".dotfiles-repo",
+  ".gitmodules",
+  ".gitignore",
+  ".gitattributes",
+  ".gitconfig",
+  "AGENTS.md",
+  "README.md",
+]
+
+[config]
+paths = [
+  ".config/wezterm",
+  ".config/visual-studio",
+  ".config/vscode-nvim",
+  ".config/ssms",
+  ".config/nvim",
+  ".config/opencode/opencode.jsonc",
+  ".config/homebase",
+  ".codex/agents",
+  ".pwsh",
+  ".starship",
+  ".vimrc",
+  ".agents",
+]

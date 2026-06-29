@@ -1,202 +1,172 @@
-# AGENTS Instructions
+# AGENTS.md
 
-This is a bare-Git dotfiles work tree rooted at `$HOME`. These instructions are
-for AI assistants and automation working in this repository.
+## Project Overview
 
-## Repository Map
+This work tree is a Windows dotfiles repository rooted at `$HOME`. It uses a
+bare Git repository at `~/.dotfiles` and tracks only selected configuration
+files under the home directory.
 
-- Work tree: `$HOME`
-- Dotfiles Git directory: `~/.dotfiles`
-- Dotfiles remote memory: `~/.dotfiles-repo`
-- Homebase source: `~/.local/lib/homebase`
-- Homebase binary: `~/.local/bin/hb.exe`
+Homebase is the companion setup/sync CLI. Its source is a separate Go
+repository at `~/.local/lib/homebase`, and its binary is expected at
+`~/.local/bin/hb.exe`.
 
-Use the bare repository form for dotfiles Git operations:
+Key tracked areas:
+
+- PowerShell profile: `.pwsh/profile.ps1`
+- Homebase config: `.config/homebase/**`
+- Editor and terminal config: `.config/nvim`, `.config/wezterm`, `.config/vscode-nvim/**`
+- Prompt and Git config: `.starship/starship.toml`, `.gitconfig`,
+  `.gitattributes`, `.gitignore`, `.gitmodules`
+- App settings: `.config/visual-studio/**`, `.config/ssms/**`,
+  `.config/opencode/opencode.jsonc`
+- Agent config and skills: `.codex/agents/**`, `.agents/**`
+
+## Repository Boundaries
+
+- The repository root is the real home directory, not a normal project folder.
+- Do not scan or mutate unrelated personal files under `$HOME`.
+- Treat untracked home-directory files as out of scope unless the user
+  explicitly names them.
+- Treat `.local/lib/homebase` as a separate Git repository.
+- Keep edits scoped to requested dotfiles, Homebase config, or Homebase source.
+- The Neovim and WezTerm directories are Git submodules.
+
+Use this form for dotfiles Git operations:
 
 ```powershell
 git --git-dir="$HOME/.dotfiles/" --work-tree="$HOME" status
 ```
 
-The PowerShell profile defines the `dot` alias:
-
-```powershell
-New-Alias -Name dot -Value Invoke-Dot -ErrorAction SilentlyContinue
-
-function Invoke-Dot {
-  git --git-dir="$HOME/.dotfiles/" --work-tree="$HOME" @Args
-}
-```
-
-## AI Workflow
-
-1. Read `README.md`, `AGENTS.md`, and the files directly related to the task
-2. Check dotfiles status with the bare repository command before editing
-3. Treat Homebase as a separate Git repository at `~/.local/lib/homebase`
-4. Keep edits scoped to the requested dotfile, Homebase config, or Homebase code
-5. Run the smallest verification set that proves the change
-6. Report commands that were run and any commands that could not be run
-
-Do not scan or mutate unrelated personal files under `$HOME`. This repository is
-a home-directory work tree, so untracked files outside configured paths are not
-project files.
-
-## Current Workflow
-
-Homebase owns bootstrap, package installation, cleanup, and dotfiles sync:
-
-```powershell
-hb bootstrap
-hb install
-hb cleanup
-hb sync
-```
-
-Use Homebase for routine synchronization:
-
-```powershell
-hb sync -m "chore: sync dotfiles"
-```
-
-Manual Git operations are acceptable when Homebase is unavailable:
+The PowerShell profile defines the equivalent `dot` alias:
 
 ```powershell
 dot status
-dot add README.md AGENTS.md .pwsh/profile.ps1
-dot commit -m "docs: update dotfiles docs"
-dot push origin main
+dot add .pwsh/profile.ps1
+dot commit -m "update powershell profile"
 ```
 
-## Behavioral Boundaries
+## Standard Workflow
 
-- Do not restore the removed `installer/` workflow
-- Do not recreate `installer/packages/scoop.txt`
-- Do not recreate `installer/packages/winget.txt`
-- Do not add bundled font directories as a package-management strategy
-- Do not run `hb bootstrap`, `hb install`, `hb cleanup`, or package managers for
-  verification unless the user explicitly asks for live side effects
-- Do not modify `.config/nvim` or `.config/wezterm` internals unless the task is
-  specifically about those submodules
-- Do not touch existing Arch Linux Homebase behavior unless explicitly requested
-- Do not run destructive Git commands such as `git reset --hard` or
-  `git checkout --` unless the user explicitly asks for that operation
-- Do not revert user changes in a dirty work tree
+1. Read this file, `README.md`, and files directly related to the task.
+2. Check dotfiles status before editing:
 
-Prefer static inspection, tests, `--help` output, and fake-runner coverage over
-commands that mutate the machine.
+   ```powershell
+   git --git-dir="$HOME/.dotfiles/" --work-tree="$HOME" status --short
+   ```
 
-## Dotfiles Contents
+3. If touching Homebase source, also check:
 
-Tracked dotfiles include:
+   ```powershell
+   git -C "$HOME/.local/lib/homebase" status --short
+   ```
 
-- `.pwsh/profile.ps1`: PowerShell profile linked to PowerShell profile paths
-- `.config/nvim`: Neovim config submodule
-- `.config/wezterm`: WezTerm config submodule
-- `.config/vscode-nvim`: VSCode Neovim settings
-- `.config/visual-studio`: Visual Studio settings
-- `.config/ssms`: SQL Server Management Studio settings
-- `.config/opencode/opencode.jsonc`: opencode config
-- `.starship/starship.toml`: Starship prompt config
-- `.vimrc`, `.gitconfig`, `.gitignore`, `.gitattributes`, `.gitmodules`
-- `.agents`: local Codex skills
-- `README.md` and `AGENTS.md`
+4. Inspect only tracked dotfiles or explicitly relevant files.
+5. Make the smallest scoped change that satisfies the task.
+6. Run the smallest meaningful verification.
+7. Report commands run and any verification skipped.
 
-Use this command to list tracked paths:
+## Setup and Development Commands
+
+Initialize Homebase config for the current platform:
 
 ```powershell
-git --git-dir="$HOME/.dotfiles/" --work-tree="$HOME" ls-files
+hb config init
 ```
 
-## Homebase Config
-
-Windows package, cleanup, and sync configuration lives in Homebase TOML:
-
-```text
-~/.config/homebase/platforms/windows/
-~/.local/lib/homebase/config/platforms/windows/
-```
-
-Runtime config under `~/.config/homebase` controls this machine and may include
-local untracked state. Defaults under `~/.local/lib/homebase/config` belong to
-the Homebase repository.
-
-Default Windows package groups are in:
-
-```text
-~/.local/lib/homebase/config/platforms/windows/packages.d/*.toml
-```
-
-Use TOML for package changes. Fonts are installed through Scoop config:
-
-```toml
-[fonts]
-label = "Fonts"
-scoop_buckets = ["nerd-fonts"]
-scoop = ["FiraCode-NF"]
-```
-
-## Homebase Code Changes
-
-Homebase is a separate Git repository at `~/.local/lib/homebase`.
-
-When editing Homebase:
-
-- Keep platform-specific behavior under `internal/platform/<id>`
-- Keep Windows behavior under `internal/platform/windows`
-- Keep runtime defaults under `config/platforms/windows`
-- Keep command routing thin in `cmd/hb/main.go`
-- Use `internal/run.Runner` for code that shells out
-- Use `internal/testutil` for shared fakes
-- Preserve existing TOML shapes unless the task requires a schema change
-
-Run before finishing Homebase code changes:
+Bootstrap dotfiles and optionally install packages:
 
 ```powershell
-Set-Location ~/.local/lib/homebase
-gofmt -w cmd internal
+hb bootstrap
+hb bootstrap --yes --install
+```
+
+Install configured Windows package groups:
+
+```powershell
+hb install
+hb install --group cli --yes
+hb install --all --yes
+```
+
+Run cleanup tasks:
+
+```powershell
+hb cleanup
+hb cleanup --task npm-cache --yes
+```
+
+Sync configured dotfiles paths:
+
+```powershell
+hb sync -m "update dotfiles"
+hb sync -m "update dotfiles" --no-push
+```
+
+Update submodules:
+
+```powershell
+git --git-dir="$HOME/.dotfiles/" --work-tree="$HOME" `
+  submodule update --init --recursive
+```
+
+## Homebase Development
+
+Homebase is a Go module in `~/.local/lib/homebase`.
+
+Common commands:
+
+```powershell
+Set-Location "$HOME/.local/lib/homebase"
 go test ./...
 go vet ./...
-go build -o ~/.local/bin/hb.exe ./cmd/hb
+go build -o "$HOME/.local/bin/hb.exe" ./cmd/hb
 ```
 
-Run after Homebase README or Markdown changes:
+If `make` is available:
 
 ```powershell
-Set-Location ~/.local/lib/homebase
-markdownlint-cli2 README.md AGENTS.md
+make check
+make build
+make smoke
 ```
 
-## Dotfiles Verification
-
-For docs-only changes in this dotfiles repository:
-
-```powershell
-markdownlint-cli2 README.md AGENTS.md
-```
-
-For PowerShell profile changes:
-
-```powershell
-$bytes = [System.IO.File]::ReadAllBytes("$HOME\.pwsh\profile.ps1")[0..2]
-($bytes | ForEach-Object { $_.ToString("X2") }) -join " "
-```
-
-Expected output:
+Homebase command surface:
 
 ```text
-EF BB BF
+hb bootstrap [--yes] [--repo <repo>] [--install]
+hb install   [--group <key>] [--all] [--yes] [--no-setup]
+hb cleanup   [--task <key>] [--all] [--yes]
+hb sync      [-m <message>] [--no-push]
+hb config init [-f|--force]
 ```
 
-For Homebase command availability without machine mutation:
+## Testing and Verification
 
-```powershell
-& "$HOME\.local\bin\hb.exe" --help
-```
+- For dotfile-only documentation changes, run a bare Git status check and
+  inspect the rendered Markdown if practical.
+- For Homebase config changes, run `hb help` and the relevant non-destructive
+  command path when possible.
+- For Homebase source changes, run `go test ./...` from `~/.local/lib/homebase`.
+- For broad Homebase changes, run `go vet ./...` and
+  `go build -o "$HOME/.local/bin/hb.exe" ./cmd/hb`.
+- Avoid running package installation, cleanup, or destructive system commands
+  unless the user explicitly requested them.
 
-## File Encoding
+## Code and File Style
 
-All `.ps1` files must be UTF-8 with BOM for Windows PowerShell 5.1.
+- Prefer existing patterns and naming.
+- Keep Markdown factual, concise, and command-oriented.
+- Keep `.toml` config sorted by the existing package-file order where possible.
+- Keep Lua config style consistent with `.config/vscode-nvim`.
+- Keep Go code formatted with `gofmt`.
+- Do not introduce unrelated formatting churn.
 
-Create or rewrite PowerShell files with:
+## PowerShell Encoding
+
+All `.ps1` files must be UTF-8 with BOM for Windows PowerShell 5.1
+compatibility.
+
+When creating or rewriting PowerShell files, use:
 
 ```powershell
 [System.IO.File]::WriteAllText(
@@ -206,39 +176,24 @@ Create or rewrite PowerShell files with:
 )
 ```
 
-Verify the first three bytes are:
+After editing a `.ps1` file, verify the BOM if the write path might have
+removed it.
 
-```text
-EF BB BF
-```
+## Security and Safety
 
-Rewrite with BOM after editing if the marker is missing.
+- Do not expose or modify secrets, tokens, SSH keys, browser data, or unrelated
+  app data in `$HOME`.
+- Do not run recursive delete or cleanup commands outside a clearly requested scope.
+- Do not install packages, alter PATH, or change registry settings unless the
+  task requires it.
+- Homebase cleanup tasks can remove caches, temp files, recycle bin contents,
+  and thumbnail caches; treat them as user-approved operations only.
+- Preserve user changes in dirty files. Do not revert unrelated work.
 
-## Development Style
+## Documentation Maintenance
 
-- Prefer existing Homebase, PowerShell, Lua, and TOML patterns over new
-  abstractions
-- Keep Windows-specific behavior in Windows-owned files
-- Keep shared Homebase helpers policy-free and backed by at least two callers
-- Keep documentation factual and grounded in repository files
-- Use copyable command blocks for setup and verification commands
-- Keep markdown headings concise and stable
-- Avoid adding generated artifacts, package caches, logs, or local machine dumps
+Update `README.md` and this file when workflows, paths, commands, or repository
+boundaries change.
 
-## Pull Requests And Bug Reports
-
-Bug reports should include:
-
-- Windows version and PowerShell version
-- The `hb`, `dot`, or shell command that failed
-- Relevant flags and config paths
-- Expected behavior and actual output
-- Whether runtime config or Homebase defaults were changed
-
-Pull requests should:
-
-- Explain the affected workflow
-- Keep dotfiles and Homebase changes separated when practical
-- Include verification output or explain why a command was skipped
-- Avoid unrelated formatting churn
-- Update README and AGENTS instructions when workflows or boundaries change
+Do not copy old documentation blindly. Verify claims against tracked files,
+Homebase source, or command output before documenting them.
