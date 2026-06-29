@@ -1,22 +1,9 @@
-# when modify .gitmodules, sync to .git/config
-# git submodule sync --recursive
-# git submodule update --init --recursive
-# git config --get-regexp submodule (check)
-#
-# first clone
-# git submodule init (no code)
-# git submodule update -recursive (clone code)
-#
-# other tips
-# git ls-files --stage
-# git rm -r --cached <path>
-
-[submodule "nvchad-config"]
+[submodule "nvchad"]
   path = .config/nvim
   url = git@github.com:gin31259461/nvchad.git
   branch = main
 
 [submodule "wezterm"]
   path = .config/wezterm
-  url = git@github.com:gin31259461/wezterm.git 
-  branch = main
+  url = git@github.com:Orbit-Lua/wezterm.git 
+  branch = master
