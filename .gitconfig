@@ -29,6 +29,12 @@
   # allowing git to track and manage symbolic links in the repository
   symlinks = true
 
+  editor = nvim
+
+[sequence]
+
+  editor = nvim
+
 [pull]
   rebase = true
 
