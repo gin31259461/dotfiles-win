@@ -1,106 +1,125 @@
-# ~/.config/starship.toml
-"$schema" = 'https://starship.rs/config-schema.json'
+# Starship prompt configuration
+# Requires a Nerd Font for the icons below.
+
+"$schema" = "https://starship.rs/config-schema.json"
 
 add_newline = false
 command_timeout = 1000
-format = """$os$username$hostname$kubernetes$directory$git_branch$git_status"""
+palette = "tokyo_night"
 
+format = """
+$os\
+$username\
+$hostname\
+$directory\
+$git_branch\
+$git_status\
+$kubernetes\
+$cmd_duration\
+$line_break\
+$character"""
+
+# Tokyo Night-inspired colors keep every module visually consistent.
+[palettes.tokyo_night]
+foreground = "#c0caf5"
+muted = "#565f89"
+blue = "#7aa2f7"
+cyan = "#7dcfff"
+green = "#9ece6a"
+magenta = "#bb9af7"
+orange = "#ff9e64"
+red = "#f7768e"
+yellow = "#e0af68"
+
+# Prompt indicator
 [character]
-success_symbol = '[ ](bold green)'
-error_symbol = '[](bold red)'
+success_symbol = "[❯](bold green)"
+error_symbol = "[❯](bold red)"
+vimcmd_symbol = "[❮](bold green)"
 
-# ╭───────────────────────────────╮
-# │ 🚀 Main Format Config         │
-# ╰───────────────────────────────╯
-
+# Operating system
 [os]
-format = '[$symbol](bold white) '
 disabled = false
+format = "[$symbol]($style) "
+style = "bold blue"
 
 [os.symbols]
-Windows = ' '
-Arch = '󰣇 '
-Ubuntu = ' '
-Macos = '󰀵 '
+Windows = ""
+Arch = "󰣇"
+Ubuntu = ""
+Macos = "󰀵"
 
-# Shows the username
+# User and host are useful remotely, but unnecessary in local sessions.
 [username]
-style_user = 'white bold'
-style_root = 'black bold'
-format = '[$user]($style) '
 disabled = false
-show_always = true
+show_always = false
+format = "[$user]($style)@"
+style_user = "bold foreground"
+style_root = "bold red"
 
-# Shows the hostname
 [hostname]
-ssh_only = false
-format = 'on [$hostname](bold yellow) '
 disabled = false
+ssh_only = true
+format = "[$hostname]($style) "
+style = "bold yellow"
 
-# Shows current directory
+# Working directory
 [directory]
-truncation_length = 1
-truncation_symbol = '…/'
-home_symbol = '󰋜 ~'
-read_only_style = '197'
-read_only = '  '
-format = 'at [$path]($style)[$read_only]($read_only_style) '
+format = "[  $path]($style)[$read_only]($read_only_style) "
+style = "bold cyan"
+home_symbol = "~"
+read_only = " "
+read_only_style = "bold red"
+truncation_length = 3
+truncation_symbol = "…/"
 
-# Shows current git branch
+# Git
 [git_branch]
-symbol = ' '
-format = '➜ [$symbol$branch]($style)'
-# truncation_length = 4
-truncation_symbol = '…/'
-style = 'bold green'
+format = "[$symbol$branch]($style) "
+style = "bold magenta"
+symbol = " "
+truncation_symbol = "…"
 
-# Shows current git status
 [git_status]
-format = '[$all_status$ahead_behind]($style) '
-style = 'bold green'
-conflicted = '🏳'
-up_to_date = ''
-untracked = ' '
-ahead = '⇡${count}'
-diverged = '⇕⇡${ahead_count}⇣${behind_count}'
-behind = '⇣${count}'
-stashed = ' '
-modified = ' '
-staged = '[++\($count\)](green)'
-renamed = ' '
-deleted = ' '
+format = "([$all_status$ahead_behind]($style) )"
+style = "bold yellow"
+ahead = "⇡${count}"
+behind = "⇣${count}"
+conflicted = " ${count}"
+deleted = " ${count}"
+diverged = "⇕⇡${ahead_count}⇣${behind_count}"
+modified = " ${count}"
+renamed = "󰑕 ${count}"
+staged = " ${count}"
+stashed = "󰏗 ${count}"
+untracked = " ${count}"
+up_to_date = ""
 
-[cmd_duration]
-min_time = 0
-show_milliseconds = true
-format = '[$duration]($style) '
-
-# ╭───────────────────────────────╮
-# │ 🚀 Specific Context Format    │
-# ╰───────────────────────────────╯
-
-# Shows kubernetes context and namespace
+# Kubernetes context stays prominent to reduce wrong-cluster mistakes.
 [kubernetes]
-format = '➜ [󱃾 $context\($namespace\)](bold purple) '
 disabled = false
+format = "[$symbol$context( \\($namespace\\))]($style) "
+style = "bold blue"
+symbol = "󱃾 "
 
-# ╭───────────────────────────────╮
-# │ 🚀 Disabled                   │
-# ╰───────────────────────────────╯
+# Only surface commands slow enough to be worth noticing.
+[cmd_duration]
+format = "[󱎫 $duration]($style) "
+min_time = 2000
+show_milliseconds = false
+style = "bold orange"
 
-[vagrant]
-disabled = true
-
+# Disabled until these contexts are useful in the prompt.
 [docker_context]
 disabled = true
 
 [helm]
 disabled = true
 
-[python]
+[nodejs]
 disabled = true
 
-[nodejs]
+[python]
 disabled = true
 
 [ruby]
@@ -109,3 +128,5 @@ disabled = true
 [terraform]
 disabled = true
 
+[vagrant]
+disabled = true
